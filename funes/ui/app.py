@@ -12,6 +12,7 @@ import pandas as pd
 from dspy.datasets.hotpotqa import HotPotQA
 from dspy.evaluate import Evaluate
 from dspy.teleprompt import BootstrapFewShotWithRandomSearch
+from dsp.utils import flatten, deduplicate
 from funes.interactions import FactualSortQA
 from funes.lang_utils import models, get_llm
 
@@ -57,7 +58,7 @@ def display_response(response):
 
 
 @st.cache_data
-def get_dataset_splits(train_size=200, dev_size=300, test_size=10, train_seed=1, eval_seed=2023):
+def get_dataset_splits(train_size=150, dev_size=50, test_size=300, train_seed=1, eval_seed=2023):
     # HotPotQA doesn't have a test set so...
     initial_train_size = train_size + dev_size
     dataset = HotPotQA(train_seed=train_seed, train_size=initial_train_size, eval_seed=eval_seed, dev_size=test_size, test_size=0)
@@ -70,7 +71,7 @@ def get_dataset_splits(train_size=200, dev_size=300, test_size=10, train_seed=1,
 def show_inspect(llm):
     history = llm.inspect_history(n=20)
     chunked_hist = history.split("\n\n\n")
-    with st.expander("Text List"):
+    with st.expander("LLM Inspection"):
         for text in chunked_hist:
             if text != "":
                 with st.chat_message("assistant"):
@@ -128,10 +129,10 @@ def main():
     dspy.configure(lm=llm, rm=colbert)
     
     with st.popover("Dataset Sizes"):
-        st.markdown("Split Sizes -> Train: 300, Dev: 100, Test: 10")
-        train_size = int(st.text_input("Train Size", value="300"))
-        val_size = int(st.text_input("Val Size", value="100"))
-        test_size = int(st.text_input("Test Size", value="10"))
+        st.markdown("Split Sizes")
+        train_size = st.number_input("Train Size", value=150)
+        val_size = st.number_input("Val Size", value=50)
+        test_size = st.number_input("Test Size", value=20)
         
     
     trainset, valset, testset = get_dataset_splits(train_size=train_size, dev_size=val_size, test_size=test_size)
@@ -187,31 +188,94 @@ def main():
     opt_col, save_agent_col = st.columns(2)
     with opt_col:
         with st.form('opt_form'):
+            max_bootstraped_demos = st.number_input("Max Bootstrapped Demos", value=2)
+            max_labeled_demos = st.number_input("Max Labeled Demos", value=0)
+            num_of_candidate_programs = st.number_input("Number of Candidate Programs", value=5)
+            num_threads = st.number_input("Number of Threads", value=2*num_cpus)
             opt_dev_eval_submitted = st.form_submit_button('Optimize Eval')
             if opt_dev_eval_submitted:
                 with st.spinner("Optimizing..."):
-                    config = dict(max_bootstrapped_demos=2, max_labeled_demos=0, num_candidate_programs=5, num_threads=2*num_cpus)
+                    config = dict(max_bootstrapped_demos=max_bootstraped_demos, max_labeled_demos=max_labeled_demos, num_candidate_programs=num_of_candidate_programs, num_threads=num_threads)
                     tp = BootstrapFewShotWithRandomSearch(metric=dspy.evaluate.answer_exact_match, **config)
                     opt_agent = tp.compile(agent, trainset=trainset, valset=valset)
                     st.text("Adding optimized agent to session")
                     st.session_state['opt_agent'] = opt_agent
+        with st.form('opt_form_2'):
+            opt_prompts_submitted = st.form_submit_button('Optimize Prompts')
+            if opt_prompts_submitted:
+                if st.session_state.get('opt_agent'):
+                    opt_agent = st.session_state.get('opt_agent')
+                    opt_agent_X = opt_agent.deepcopy()
+                    del opt_agent_X.candidate_programs
+
+                    config = dict(max_bootstrapped_demos=2, max_labeled_demos=0, num_candidate_programs=20, num_threads=8)
+                    tp = BootstrapFewShotWithRandomSearch(metric=dspy.evaluate.answer_exact_match, **config)
+                    opt_agent_2 = tp.compile(agent, trainset=trainset, valset=valset, teacher=opt_agent_X)
+                    st.text("Adding optimized agent 2 to session")
+                    st.session_state['opt_agent_2'] = opt_agent_2
+                else:
+                    st.warning("No optimized agent in session to optimize prompts")
+
+        with st.form('opt_form_3'):
+            opt_aggregator_submitted = st.form_submit_button('Optimize Agregator')
+            if opt_aggregator_submitted:            
+                if st.session_state.get('opt_agent_2'):
+                    prompt_opt_agent = st.session_state.get('opt_agent_2')
+                    st.write("Getting the best-performing five ReAct programs from the optimization process")
+                    AGENTS = [x[-1] for x in prompt_opt_agent.candidate_programs[:5]]
+                    with st.expander("Best-performing ReAct programs", expanded=False):
+                        for agent in AGENTS:
+                            st.info(agent)
+
+                    class Aggregator(dspy.Module):
+                        def __init__(self, temperature=0.0):
+                            self.aggregate = dspy.ChainOfThought('context, question -> answer')
+                            self.temperature = temperature
+
+                        def forward(self, question):
+                            # Run all five agents with high temperature, then extract and deduplicate their observed contexts
+                            with dspy.context(lm=llm.copy(temperature=self.temperature)):
+                                preds = [agent(question=question) for agent in AGENTS]
+                                context = deduplicate(flatten([flatten(p.observations) for p in preds]))
+
+                            # Run the aggregation step to produce a final answer
+                            return self.aggregate(context=context, question=question)            
+                    with st.spinner("Optimizing Aggregator..."):
+                        aggregator = Aggregator()
+                        kwargs = dict(max_bootstrapped_demos=2, max_labeled_demos=6, num_candidate_programs=10, num_threads=8)
+                        tp = BootstrapFewShotWithRandomSearch(metric=dspy.evaluate.answer_exact_match, **kwargs)
+                        optimized_aggregator = tp.compile(aggregator, trainset=trainset, valset=valset)
+                        st.session_state['opt_agent_3'] = optimized_aggregator
+            else:
+                st.warning("No optimized agent 2 in session to aggregate")
+
+            
 
     with save_agent_col:
         with st.form('save_agent_form'):
-            save_filename = st.text_input('Enter filename:', value=f'{MODEL_BASEDIR}/optimized_react_{model.split("/")[-1]}_{train_size}_train_examples.json')
             save_btn = st.form_submit_button('Save Optimized Agent')
-            if save_btn and st.session_state.get('opt_agent'):
-                st.text("Saving optimized agent")                
-                opt_agent=st.session_state.get('opt_agent')
-                opt_agent.save(save_filename)
+            if save_btn:
+                for agent_name in ['opt_agent', 'opt_agent_2', 'opt_agent_3']:
+                    if  st.session_state.get(agent_name):
+                        st.text(f"Saving optimized agent: {agent_name}")                
+                        opt_agent=st.session_state.get(agent_name)
+                        save_filename = st.text_input('Enter filename:', value=f'{MODEL_BASEDIR}/optimized_react_{agent_name}_{model.split("/")[-1]}_{train_size}_train_examples.json')
+                        opt_agent.save(save_filename)
             else:
                 st.warning("No optimized agent in session to save")
             
 
     with st.form('validate'):
+        st.json(llm.kwargs)
         use_optimized = st.checkbox('Use Optimized Agent', value=False)
         if use_optimized:
-            if st.session_state.get('opt_agent'):
+            if st.session_state.get('opt_agent_3'):
+                st.info("Using optimized aggregator from session")
+                eval_agent = st.session_state['opt_agent_3']            
+            elif st.session_state.get('opt_agent_2'):
+                st.info("Using optimized agent 2 from session")
+                eval_agent = st.session_state['opt_agent_2']                
+            elif st.session_state.get('opt_agent'):
                 st.info("Using optimized agent from session")
                 eval_agent = st.session_state['opt_agent']
             else:
@@ -225,7 +289,7 @@ def main():
             with st.spinner("Evaluating..."):
                 evaluate = Evaluate(devset=testset, metric=dspy.evaluate.answer_exact_match, **config)
                 score, outputs, scores_bool = evaluate(eval_agent, return_all_scores = True, return_outputs = True)
-                st.markdown(f"### Evaluation Score: {int(score)}/{len(testset)}")
+                st.markdown(f"### Evaluation Score: {score} % ({sum(scores_bool)}/{len(testset)})")
                 st.markdown(f"## Scores")
                 for i, s in enumerate(outputs):
                     example, prediction, score = outputs[i]
