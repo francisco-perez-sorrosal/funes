@@ -1,7 +1,10 @@
 import os
+from typing import Optional
 
 import dspy
 import streamlit as st
+from langchain_huggingface import HuggingFaceEndpoint
+from langchain_core.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
 models = {
     "oai-gpt3.5-turbo": "gpt-3.5-turbo-1106",
@@ -20,16 +23,33 @@ models = {
 OA_API_KEY = os.getenv("OA_API_KEY")
 
 @st.cache_resource(show_spinner=True)
-def get_llm(model: str, provider: str, port: int=8081, url: str="http://localhost", temperature: float=0.0, max_tokens: int=100):
-    if provider == "OA":
-        lm = dspy.OpenAI(model=model, api_key=OA_API_KEY, max_tokens=max_tokens)
-    elif provider == "OllamaLocal":
-        lm = dspy.OllamaLocal(model=model, port=port, temperature=temperature, max_tokens=max_tokens)
-    elif provider == "VLLM":
-        lm = dspy.HFClientVLLM(model=model, port=port, url=url, temperature=temperature, max_tokens=max_tokens)
-    elif provider == "TGI":
-        lm = dspy.HFClientTGI(model=model, port=port, url=url, temperature=temperature, max_tokens=max_tokens)
-    else:
-        raise ValueError("Invalid backend provider")
+def get_llm(model: Optional[str], provider: str="HF", port: int=8081, url: str="http://localhost", temperature: float=0.0, max_tokens: int=100):
+    match provider:
+        case "HF":
+            callbacks = [StreamingStdOutCallbackHandler()]
+            lm = HuggingFaceEndpoint(
+                endpoint_url=f"{url}:{port}",
+                task="text-generation",
+                max_new_tokens=max_tokens,
+                top_k=10,
+                top_p=0.95,
+                typical_p=0.95,
+                temperature=0.01,
+                repetition_penalty=1.03,
+                callbacks=callbacks,
+                streaming=True,
+                do_sample=False,
+                stop_sequences=["<|eot_id|>"]
+            )
+        case "OpenAI":
+            lm = dspy.OpenAI(model=model, api_key=OA_API_KEY, max_tokens=max_tokens)
+        case "OllamaLocal":
+            lm = dspy.OllamaLocal(model=model, port=port, temperature=temperature, max_tokens=max_tokens)
+        case "VLLM":
+            lm = dspy.HFClientVLLM(model=model, port=port, url=url, temperature=temperature, max_tokens=max_tokens)
+        case "TGI":
+            lm = dspy.HFClientTGI(model=model, port=port, url=url, temperature=temperature, max_tokens=max_tokens)
+        case _:
+            raise ValueError("Invalid backend provider")
     
     return lm
