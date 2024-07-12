@@ -2,6 +2,7 @@
 .pixi
 *.egg-info
 langsmith
+openai
 
 funes/__pycache__/
 funes/agents/__pycache__/

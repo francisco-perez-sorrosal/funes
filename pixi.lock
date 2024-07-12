@@ -150,6 +150,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/cd/79/319f4898ce837e62d3611ed5da9246d10e3a966bb60fadb54901563867cf/langchain_core-0.2.10-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/39/ce/ad7f50a6289cf562747df9a966b4d60a848571db2e57ad8d00dca2478096/langchain_huggingface-0.0.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/06/76/9e0ca1b8881f64bf927f2205bf6c43a085c04646a71d911b3c05d76e90bb/langchain_text_splitters-0.2.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/63/af/1ede340c6283f6a70cf0e2aaa4e9c8e817ff54b0ec4df4fd956d81abffea/langchainhub-0.1.20-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d8/ab/17c81747f49cc15e98d0971a2260839046f788826b1f1b4ab81c82a859f2/langgraph-0.1.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/11/4f/1d89e18d542b4545787a806dd8b485b5178781cd6c99e7c79285fd862a34/langsmith-0.1.82-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/9c/eef7c591e6dc952f3636cfe0df712c0f9916cedf317810a3bb53ccb65cdd/lark-1.1.9-py3-none-any.whl
@@ -251,6 +252,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/d9/b7/98f821d70102e2d38483bbb7013a689d2d646daa4495377bc910374ad727/transformers-4.41.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/db/ee/8d50d44ed5b63677bb387f4ee67a7dbaaded0189b320ffe82685a6827728/triton-2.3.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/20/b5/11cf2e34fbb11b937e006286ab5b8cfd334fde1c8fa4dd7f491226931180/typer-0.12.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/8f/d0/409f7b40f9c34896b153c911d442c6e8d0f78035ddbfa387183aec5aa8c5/types_requests-2.32.0.20240622-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/65/f3/107a22063bf27bdccf2024833d3445f4eea42b2e598abfbd46f6a63b6cb0/typing_inspect-0.9.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/65/58/f9c9e6be752e9fcb8b6a0ee9fb87e6e7a1f6bcab2cdc73f02bb7ba91ada0/tzdata-2024.1-py2.py3-none-any.whl
@@ -1175,7 +1177,7 @@ packages:
   name: funes
   version: 0.1.0
   path: .
-  sha256: 48a62f7174508555f07b928f69b40d9331ca15fcba2c1408ed53d287acee3eef
+  sha256: 9b08c635d5139a6cf6f66d99760b803824123aa5dda7c6f2c9142a6035264d76
   requires_dist:
   - rich
   - dspy-ai
@@ -1190,6 +1192,7 @@ packages:
   - langchain-community
   - text-generation
   - arxiv
+  - langchainhub
   requires_python: '>=3.10,<3.11'
   editable: true
 - kind: conda
@@ -1904,6 +1907,16 @@ packages:
   sha256: 1c80d4b11b55e2995f02d2a326c0323ee1eeff24507329bb22924e420c782dff
   requires_dist:
   - langchain-core>=0.2.10,<0.3.0
+  requires_python: '>=3.8.1,<4.0'
+- kind: pypi
+  name: langchainhub
+  version: 0.1.20
+  url: https://files.pythonhosted.org/packages/63/af/1ede340c6283f6a70cf0e2aaa4e9c8e817ff54b0ec4df4fd956d81abffea/langchainhub-0.1.20-py3-none-any.whl
+  sha256: b3cbb5b2d7d6f9c3f89748bcc74424d8030ed4ebca58b5f44e0b6d9f111e33eb
+  requires_dist:
+  - packaging>=23.2,<25
+  - requests>=2,<3
+  - types-requests>=2.31.0.2,<3.0.0.0
   requires_python: '>=3.8.1,<4.0'
 - kind: pypi
   name: langgraph
@@ -4449,6 +4462,14 @@ packages:
   - shellingham>=1.3.0
   - rich>=10.11.0
   requires_python: '>=3.7'
+- kind: pypi
+  name: types-requests
+  version: 2.32.0.20240622
+  url: https://files.pythonhosted.org/packages/8f/d0/409f7b40f9c34896b153c911d442c6e8d0f78035ddbfa387183aec5aa8c5/types_requests-2.32.0.20240622-py3-none-any.whl
+  sha256: 97bac6b54b5bd4cf91d407e62f0932a74821bc2211f22116d9ee1dd643826caf
+  requires_dist:
+  - urllib3>=2
+  requires_python: '>=3.8'
 - kind: pypi
   name: typing-extensions
   version: 4.12.2

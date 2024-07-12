@@ -2,7 +2,8 @@ import os
 import streamlit as st
 
 from funes.lang_utils import models, get_llm
-from funes.agents.retriever import RetrieverAgent
+from funes.agents.basic_agent import BasicAgent, Role, TOOLS
+from funes.prompt import basic_react_prompt
 from funes.agents.coordinator import ArxivRetrieverAgenticGraph
 
 from IPython.display import Image, display
@@ -17,21 +18,26 @@ os.environ["LANGSMITH_API_KEY"] = langsmith_api_key
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
 os.environ["LANGCHAIN_PROJECT"] = "Funes"
 
-st.title("Retriever UI")
+with open("openai", "r") as file:
+    openai_api_key = file.read().strip()
+st.write(f"Open API key: {openai_api_key}")
+os.environ["OPEN_API_KEY"] = openai_api_key
+
+st.title("Basic UI")
 
 lm = st.session_state.get("lm")
 
 if not lm:
     st.warning("No model selected")
     st.stop()
-   
-# retriever = RetrieverAgent(lm)
-retriever = ArxivRetrieverAgenticGraph(lm)
     
-st.image(retriever.get_graph().draw_png())
 
-if prompt := st.chat_input('Retrieve the ReAct paper from arxiv 2210.03629'):
-    st.chat_message("user").write(prompt)
-    for event in retriever(prompt, "values"):
-        st.write(event)
-        # print_event(event, _printed=set(), streamlit=True)     
+agent = BasicAgent(lm, basic_react_prompt)
+
+if prompt := st.chat_input("How much does a toy poodle weigh?"):
+    st.chat_message(Role.USER).write(prompt)
+    result=agent.query(prompt, known_tools=TOOLS)
+    
+    st.write(result)
+    
+    st.write(agent.messages)

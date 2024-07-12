@@ -2,6 +2,7 @@ import json
 
 from typing import Annotated, Literal, Optional, TypedDict
 
+from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_huggingface import ChatHuggingFace
 from langgraph.graph import StateGraph, END
 
@@ -12,7 +13,7 @@ from langgraph.pregel import GraphRecursionError
 from langchain_core.messages import ToolMessage
 
 from funes.agents.base_agent import BaseAgent
-from funes.tools import ArxivSearchTool
+from funes.tools import ArxivSearchTool, ArxivDownloaderTool
 
 
 class RetrieverAgentState(TypedDict):
@@ -20,12 +21,6 @@ class RetrieverAgentState(TypedDict):
     # *how* updates should be merged into the state.
     messages: Annotated[list, add_messages]
     # extracted_paper: str
-
-
-# class Paper(BaseModel):
-#     title: str = Field(description="the title of the paper")
-#     arxiv_id: str = Field(description="the arxiv identifier of the paper")
-
 
 class BasicToolNode:
     """A node that runs the tools requested in the last AIMessage."""
@@ -61,6 +56,7 @@ class BasicToolNode:
             )
         return {"messages": outputs}
 
+from langchain.agents import create_openai_functions_agent
 
 class RetrieverAgent(BaseAgent):
 
@@ -69,7 +65,8 @@ class RetrieverAgent(BaseAgent):
         print(f"Creating agent {name}")
         self.graph_definition = StateGraph(RetrieverAgentState)
         arxiv_search_tool = ArxivSearchTool()
-        self.tools = [arxiv_search_tool]
+        arxiv_downloader_tool = ArxivDownloaderTool()
+        self.tools = [arxiv_search_tool, arxiv_downloader_tool]
         self.chat = ChatHuggingFace(llm=lm, model_id=model_id)
         self.chat = self.chat.bind_tools(self.tools)
         print(f"Chat model {self.chat.model_id} for agent {self.name} created")

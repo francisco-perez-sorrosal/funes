@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Add a short description here"
 authors = [{name = "Francisco Perez-Sorrosal", email = "fperezsorrosal@gmail.com"}]
 requires-python = ">= 3.10,<3.11"
-dependencies = ["rich", "dspy-ai", "ipykernel", "vllm", "setuptools", "huggingface-hub[cli]", "streamlit", "langgraph", "langchain-huggingface", "langchain", "langchain-community", "text-generation", "arxiv"]
+dependencies = ["rich", "dspy-ai", "ipykernel", "vllm", "setuptools", "huggingface-hub[cli]", "streamlit", "langgraph", "langchain-huggingface", "langchain", "langchain-community", "text-generation", "arxiv", "langchainhub"]
 
 [build-system]
 requires = ["setuptools"]

@@ -5,7 +5,7 @@ from funes.lang_utils import models, get_llm
 
 st.set_page_config(layout="wide")
 
-providers = ["HF", "OA", "OllamaLocal", "TGI"]
+providers = ["HF", "OpenAI", "OllamaLocal", "TGI"]
 model_options = list(models.keys())
 
 
@@ -13,6 +13,7 @@ def page2():
     st.title("Second page")
 
 pg = st.navigation([
+    st.Page("basic_ui.py", title="Basic agent", icon="🔥"),
     st.Page("retriever_ui.py", title="Agent loader", icon="🔥"),
     st.Page(page2, title="Second page", icon=":material/favorite:"),
 ])

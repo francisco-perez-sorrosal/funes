@@ -20,7 +20,9 @@ models = {
     "hf-Meta-Llama-3-8B-Instruct": "meta-llama/Meta-Llama-3-8B-Instruct",
 }
 
-OA_API_KEY = os.getenv("OA_API_KEY")
+with open("openai", "r") as file:
+    openai_api_key = file.read().strip()
+os.environ["OPENAI_API_KEY"] = openai_api_key
 
 @st.cache_resource(show_spinner=True)
 def get_llm(model: Optional[str], provider: str="HF", port: int=8081, url: str="http://localhost", temperature: float=0.0, max_tokens: int=100):
@@ -42,7 +44,9 @@ def get_llm(model: Optional[str], provider: str="HF", port: int=8081, url: str="
                 stop_sequences=["<|eot_id|>"]
             )
         case "OpenAI":
-            lm = dspy.OpenAI(model=model, api_key=OA_API_KEY, max_tokens=max_tokens)
+            lm = dspy.OpenAI(model=model, api_key=os.environ.get("OPENAI_API_KEY"), max_tokens=max_tokens)
+            import openai
+            lm = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         case "OllamaLocal":
             lm = dspy.OllamaLocal(model=model, port=port, temperature=temperature, max_tokens=max_tokens)
         case "VLLM":
