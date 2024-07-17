@@ -1,11 +1,10 @@
 import streamlit as st
 
-from funes.lang_utils import models, get_llm
+from funes.lang_utils import models, get_llm, providers
 
 
 st.set_page_config(layout="wide")
 
-providers = ["HF", "OpenAI", "OllamaLocal", "TGI"]
 model_options = list(models.keys())
 
 

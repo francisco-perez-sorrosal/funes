@@ -1,10 +1,17 @@
 import os
+import openai
+import langchain_openai
+
 from typing import Optional
 
 import dspy
 import streamlit as st
 from langchain_huggingface import HuggingFaceEndpoint
+from langchain_openai import ChatOpenAI
 from langchain_core.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+
+
+providers = ["HF", "OpenAI-Chat", "OpenAI", "OllamaLocal", "TGI"]
 
 models = {
     "oai-gpt3.5-turbo": "gpt-3.5-turbo-1106",
@@ -27,6 +34,11 @@ os.environ["OPENAI_API_KEY"] = openai_api_key
 @st.cache_resource(show_spinner=True)
 def get_llm(model: Optional[str], provider: str="HF", port: int=8081, url: str="http://localhost", temperature: float=0.0, max_tokens: int=100):
     match provider:
+        # case "HF-Chat":
+        #     lm = ChatOpenAI(
+        #         model_name="tgi",                
+        #         openai_api_base=f"{url}:{port}" + "/v1/",
+        #     )
         case "HF":
             callbacks = [StreamingStdOutCallbackHandler()]
             lm = HuggingFaceEndpoint(
@@ -43,9 +55,10 @@ def get_llm(model: Optional[str], provider: str="HF", port: int=8081, url: str="
                 do_sample=False,
                 stop_sequences=["<|eot_id|>"]
             )
+        case "OpenAI-Chat":
+            lm = langchain_openai.ChatOpenAI(model="gpt-4o")                        
         case "OpenAI":
             lm = dspy.OpenAI(model=model, api_key=os.environ.get("OPENAI_API_KEY"), max_tokens=max_tokens)
-            import openai
             lm = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         case "OllamaLocal":
             lm = dspy.OllamaLocal(model=model, port=port, temperature=temperature, max_tokens=max_tokens)

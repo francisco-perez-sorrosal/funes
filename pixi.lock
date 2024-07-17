@@ -147,8 +147,9 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/c9/fb/108ecd1fe961941959ad0ee4e12ee7b8b1477247f30b1fdfd83ceaf017f0/jupyter_core-5.7.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3f/ae/a5ac2059e8dcc326f8ad4e10d907f6fdf1f920ab060020f12ad64ca26172/langchain-0.2.6-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/be/34/9e064763f81811257667a2a6fc83a3b3e679b62a38fdb6a996c6661c7cd2/langchain_community-0.2.6-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/cd/79/319f4898ce837e62d3611ed5da9246d10e3a966bb60fadb54901563867cf/langchain_core-0.2.10-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/a9/dd/e259bcdccd5f37a7302f2da774ce1bba818927caeb781993b7b17ed9a186/langchain_core-0.2.19-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/39/ce/ad7f50a6289cf562747df9a966b4d60a848571db2e57ad8d00dca2478096/langchain_huggingface-0.0.3-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/7e/39/7dbd710fea15a80328f1a3c18cc7ce564e1242cbba28902b55733c80177e/langchain_openai-0.1.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/06/76/9e0ca1b8881f64bf927f2205bf6c43a085c04646a71d911b3c05d76e90bb/langchain_text_splitters-0.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/63/af/1ede340c6283f6a70cf0e2aaa4e9c8e817ff54b0ec4df4fd956d81abffea/langchainhub-0.1.20-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d8/ab/17c81747f49cc15e98d0971a2260839046f788826b1f1b4ab81c82a859f2/langgraph-0.1.3-py3-none-any.whl
@@ -1177,7 +1178,7 @@ packages:
   name: funes
   version: 0.1.0
   path: .
-  sha256: 9b08c635d5139a6cf6f66d99760b803824123aa5dda7c6f2c9142a6035264d76
+  sha256: 0735d30dbfed4bab5138d0e9e614aefcd06b3480f65dced20304d223a3510fef
   requires_dist:
   - rich
   - dspy-ai
@@ -1193,6 +1194,7 @@ packages:
   - text-generation
   - arxiv
   - langchainhub
+  - langchain-openai
   requires_python: '>=3.10,<3.11'
   editable: true
 - kind: conda
@@ -1876,9 +1878,9 @@ packages:
   requires_python: '>=3.8.1,<4.0'
 - kind: pypi
   name: langchain-core
-  version: 0.2.10
-  url: https://files.pythonhosted.org/packages/cd/79/319f4898ce837e62d3611ed5da9246d10e3a966bb60fadb54901563867cf/langchain_core-0.2.10-py3-none-any.whl
-  sha256: 6eb72086b6bc86db9812da98f79e507c2209a15c0112aefd214a04182ada8586
+  version: 0.2.19
+  url: https://files.pythonhosted.org/packages/a9/dd/e259bcdccd5f37a7302f2da774ce1bba818927caeb781993b7b17ed9a186/langchain_core-0.2.19-py3-none-any.whl
+  sha256: 5b3cd34395be274c89e822c84f0e03c4da14168c177a83921c5b9414ac7a0651
   requires_dist:
   - pyyaml>=5.3
   - jsonpatch>=1.33,<2.0
@@ -1899,6 +1901,16 @@ packages:
   - sentence-transformers>=2.6.0
   - tokenizers>=0.19.1
   - transformers>=4.39.0
+  requires_python: '>=3.8.1,<4.0'
+- kind: pypi
+  name: langchain-openai
+  version: 0.1.16
+  url: https://files.pythonhosted.org/packages/7e/39/7dbd710fea15a80328f1a3c18cc7ce564e1242cbba28902b55733c80177e/langchain_openai-0.1.16-py3-none-any.whl
+  sha256: bff90e9d0be786495920a7851ae4d55247fb084d3a11d1b15bfe91904ce1cb0f
+  requires_dist:
+  - langchain-core>=0.2.17,<0.3.0
+  - openai>=1.32.0,<2.0.0
+  - tiktoken>=0.7,<1
   requires_python: '>=3.8.1,<4.0'
 - kind: pypi
   name: langchain-text-splitters

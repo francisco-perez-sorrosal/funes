@@ -1,3 +1,5 @@
+from langchain_core.prompts import PromptTemplate
+
 basic_react_prompt = """
 You run in a loop of Thought, Action, PAUSE, Observation.
 At the end of the loop you output an Answer
@@ -30,3 +32,26 @@ You then output:
 
 Answer: A bulldog weights 51 lbs
 """.strip()
+
+
+basic_react_prompt_template = """
+You are a smart research assistant. Think step by step what would be \
+the steps to follow in a plan and then use the tools to look up information you need, \
+for example about the weight of different dogs or combinations of them based on their breed. \
+There is also a calculator to calculate mathematical expressions like "(2 * 3) + 1" . \
+You are allowed to make multiple calls to the tools to collect Facts. \
+If you need to look up some information before asking a follow up question, \
+you are allowed to do that by means of the tools! 
+
+    
+Facts:
+
+{facts}
+
+Only look up information when you are sure of what you want. \
+If the answer is in the facts, do no call any tool and just return the fact containing the answer.
+""".strip()
+
+basic_template = PromptTemplate(template=basic_react_prompt_template, input_variables=["facts"])
+
+
