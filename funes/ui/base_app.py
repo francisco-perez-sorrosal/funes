@@ -5,7 +5,7 @@ from funes.lang_utils import models, get_llm, providers
 
 st.set_page_config(layout="wide")
 
-model_options = list(models.keys())
+
 
 
 def page2():
@@ -22,11 +22,10 @@ if lm is None:
     st.sidebar.markdown("## Select LLM")
     with st.sidebar.form('select_lm_form'):
         # Dropdown box for selecting provider options
-        provider = st.selectbox("Select a provider", providers, index=0)
-        model = None
-        if provider != "HF":
-            selected_model = st.selectbox("Select a model", model_options, index=len(model_options)-1)
-            model = models.get(selected_model, "")
+        provider = st.selectbox("Select a provider", providers, index=1)
+        model_options = [k for k in models.keys() if k.startswith(provider.lower())]
+        selected_model = st.selectbox("Select a model", model_options, index=0)
+        model = models.get(selected_model, "")
         if model == "":
             st.warning("No model selected")
             st.stop() 

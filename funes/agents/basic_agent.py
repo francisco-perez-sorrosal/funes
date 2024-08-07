@@ -1,18 +1,25 @@
 import operator
 import os
 import re
+import pprint
 
 from enum import Enum
-from typing import Any, Dict, TypedDict, Annotated, Optional, Type
+from typing import Any, Dict, List, TypedDict, Annotated, Optional, Type
 from langchain_huggingface import ChatHuggingFace
+from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_huggingface.llms.huggingface_endpoint import HuggingFaceEndpoint
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, ToolMessage, AIMessage
 from langchain_core.tools import BaseTool, tool
 from langchain_core.callbacks.manager import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langgraph.graph import StateGraph, END
-from langchain_core.pydantic_v1 import BaseModel, Field
-from pydantic import BaseModel
+# from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
+from typing_extensions import Annotated, TypedDict
+import sqlite3
+import instructor
+from openai import OpenAI
 
 @tool
 def calculate(math_exp):
@@ -109,8 +116,8 @@ TOOLS = {
     "average_dog_weight": average_dog_weight
 }
 
-# langchain_tools = [calculate, average_dog_weight]
-langchain_tools = [Calculator(), DogBreedWeighter()]
+langchain_tools = [calculate, average_dog_weight]
+# langchain_tools = [Calculator(), DogBreedWeighter()]
 
 
 class Role(str, Enum):
@@ -118,148 +125,182 @@ class Role(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
 
-def msg_builder(content:str, role:Role = Role.USER):
-    return {"role": role, "content": content}
 
-action_re = re.compile('^Action: (\w+): (.*)$') 
+class Suggestions(BaseModel):
+    """Suggestions to the plan."""
+    elems: List[str] #= Field(description="List of suggestions to improve the plan.")
 
+# class Suggestions(TypedDict):
+#     """Suggestions to the plan."""
+#     elems: Annotated[List[str], ..., "List of suggestions to improve the plan."]
 
-class BasicAgent:
-    def __init__(self, llm, system_msg:str = ""):
-        self.llm = llm
-        self.chat = ChatHuggingFace(llm=self.llm, model_id="meta-llama/Meta-Llama-3-8B-Instruct")
-        self.system_msg = system_msg
-        self.messages = []
-        if self.system_msg:
-            self.messages.append(msg_builder(self.system_msg, Role.SYSTEM))
-                                 
-    def __call__(self, msg):
-        self.messages.append(msg_builder(msg))
-        result = self.execute()
-        self.messages.append(msg_builder(result, Role.ASSISTANT))
-        return result
-    
-    def execute(self):
-        completion = self.chat.invoke(self.messages)
-        print(completion.content)
-        return completion.content
-
-        # completion = self.llm.chat.completions.create(
-        #     model="gpt-4o",
-        #     temperature=0,
-        #     messages=self.messages,
-        # )
-        # return completion.choices[0].message.content
-
-
-    def query(self, question, known_tools: Dict[str, str], max_turns=5):
-        i = 0
-        next_prompt = question
-        result = ""
-        while i < max_turns:
-            i += 1
-            result = self(next_prompt)
-            print("JFSDJFD")
-            print(result)
-            actions = [
-                action_re.match(a) 
-                for a in result.split('\n') 
-                if action_re.match(a)
-            ]
-            if actions:
-                # There is an action to run
-                action, action_input = actions[0].groups()
-                if action not in known_tools:
-                    raise Exception("Unknown action: {}: {}".format(action, action_input))
-                print(" -- running {} {}".format(action, action_input))
-                observation = known_tools[action](action_input)
-                print("Observation:", observation)
-                next_prompt = "Observation: {}".format(observation)
-            else:
-                if result and "Answer" in result:
-                    return result
-                else:
-                    return "No result found"
 
 class AgentState(TypedDict):
-    messages: Annotated[list[AnyMessage], operator.add]
-    
-    
-class BasicLGAgent:
+    task: str
+    lnode: str
+    plan: str
+    plan_approved: bool
+    suggestions: List[str]
+    max_revisions: int
+    revision_number: int
+    # draft: str
+    # critique: str
+    # content: List[str]
+    # queries: List[str]
+    count: Annotated[int, operator.add]
 
-    def __init__(self, model, tools, system="", memory=None,name="Pepe"):
-        self.system = system
-        self.name = name
-        graph = StateGraph(AgentState)
+class DoggieMultiAgent():
+    def __init__(self, lm, name="Pepe"):
         
-        graph.add_node("llm", self.call_llm)
-        graph.add_node("action", self.take_action)
-        graph.add_conditional_edges(
-            "llm",
-            self.exists_action,
-            {True: "action", False: END}
+        self.name = name
+        self.model = lm
+        self.model.bind_tools(langchain_tools)
+        
+        # self.PLAN_PROMPT = """
+        # You are an expert planner knowledgeable about all that has do do with dogs and dog breeds \
+        # , so you can be tasked to make a plan to manage to answer any question related to that. \
+        # For example you can be tasked with the task to calculate the average weight of one or several dogs of \
+        # different breeds, so you can be come up with plan consisting of a series of steps similar to these: \
+        # 1. Identify the breed of the dog or dogs that are involved in the question. \
+        # 2. Calculate the average weight of each dog depending on its breed. \
+        # 3. Perform the math calculations to get the final result. \
+        # 4. Reflect on the results and come up with a critique the plan if necessary. \
+        # 5. Execute the critique plan if you can't find a satisfactory response. Otherwise deliver what you to the user. \
+        # If the user provides suggestions, respond with a revised version of your previous attempts. \
+        # Utilize all the information below as needed: \
+        # {suggestions}""".strip()
+        
+        self.PLAN_PROMPT = """
+        You are an expert planner with knowledge and tools about all that has \
+        do do with dogs and dog breeds, so you can be tasked to make a plan \
+        using that knowledge and tools to manage to answer any user task of that topic. \
+        Think step by step. \
+        Tools available: \
+        "average_dog_weight": Returns the average weight of a dog breed. \
+        Utilize the suggestions below as needed to improve the plan: \
+        {suggestions} \
+        Just respond with the plan steps.. \
+        User task: """.strip()
+        
+        self.PLAN_CRITIC_PROMPT = """
+        You are an expert decision maker grading an plan submission. \
+        Return a list of critiques and suggestions for the user's plan submission. \
+        The list will contain straight to the point recommendations on how to improve the plan, \
+        like step clarification, decomposition in fine-grain steps, etc. \
+        Be straight to the point and don't overcomplicate steps. \
+        If the plan already seems reasonable just return a list of empty suggestions.""".strip()
+        
+        # Define Agent graph nodes
+        builder = StateGraph(AgentState)
+        builder.add_node("planner", self.plan_node)
+        builder.add_node("planner_critic", self.plan_critic)
+        
+        # Define edges
+        builder.add_edge("planner", "planner_critic")
+        builder.add_conditional_edges(
+            "planner_critic", 
+            self.should_refine_plan, 
+            {
+                "review": "planner",  # Back to planner
+                END: END, 
+            }
         )
-        graph.add_edge("action", "llm")
-        graph.set_entry_point("llm")
-        self.graph = graph.compile(
+        
+        # Entry point for the workflow
+        builder.set_entry_point("planner")
+        
+        memory = SqliteSaver(conn=sqlite3.connect(":memory:", check_same_thread=False))
+        self.graph = builder.compile(
             checkpointer=memory,
-            interrupt_before=["action"]
+            interrupt_after=['planner', "planner_critic"] # 'generate', 'reflect', 'research_plan', 'research_critique']
         )
-        self.tools = {t.name: t for t in tools}
-        # self.tools = tools
-        print(f"Tools: {self.tools}")
-        print(f"Model: {type(model)}")
-        if isinstance(model, HuggingFaceEndpoint):
-            chat = ChatHuggingFace(llm=model, model_id="meta-llama/Meta-Llama-3-8B-Instruct")
-            self.model = chat.bind_tools(tools)
-            print(f"Chat model {self.model.model_id} for agent created")            
-        else:
-            print("Non HF Endpoint")
-            self.model = model.bind_tools(tools)
-        print(f"Model: {self.model.name}")
 
-    def exists_action(self, state: AgentState):
-        print("In exists action")
-        result = state['messages'][-1]
-        print(f"Exist Action {len(result.tool_calls) > 0}")
-        return len(result.tool_calls) > 0
+        
+    def plan_node(self, state: AgentState):
+        pprint.pprint("-------------- Plan Node ---------------")
+        possible_suggestions = "\n\n".join(state['suggestions'] or [])
+        plan = self.PLAN_PROMPT.format(suggestions=possible_suggestions)
+        pprint.pprint(f"Plan prompt:\n{plan} ")
+        pprint.pprint(f"{state['task']} ")
+        messages = [
+            SystemMessage(content=plan), 
+            HumanMessage(content=state['task'])
+        ]
+        response = self.model.invoke(messages)
+        pprint.pprint(f"Response:\n{response.content}")
+        pprint.pprint("-------------- End Plan Node ---------------")
+        return {"plan": response.content,
+               "lnode": "planner",
+                "count": 1,
+               }
+        
+        
 
-    def call_llm(self, state: AgentState):
-        messages = state['messages']
-        if isinstance(messages[-1], ToolMessage) and messages[-1].content != "":
-            print("Tool Message with answer found. Adding Facts")
-            system = self.system.format(facts=messages[-1].content)
-            messages = [SystemMessage(content=system)] + messages
-        else:            
-            if self.system:
-                messages = [SystemMessage(content=self.system.format(facts=""))] + messages
-        self.print_stream(messages)
-        print("============= Calling model =============")
-        message = self.model.invoke(messages)
-        print(f"============= Model response:\n{message}\n=============")
-        return {'messages': [message]}
+    def plan_critic(self, state: AgentState):
+        
+        pprint.pprint("-------------- Plan Critic Node ---------------")        
+        pprint.pprint(state['plan'])
 
-    def take_action(self, state: AgentState):
-        print("---- Taking action ----")
-        print(state)
-        tool_calls = state['messages'][-1].tool_calls
-        print(tool_calls)
-        print("---- Action taken -----")
-        results = []
-        for t in tool_calls:
-            print(f"======= Calling: {t['name']} =====")
-            if not t['name'] in self.tools:      # check for bad tool name from LLM
-                print("\n ....bad tool name....")
-                result = "bad tool name, retry"  # instruct LLM to retry if bad
-            else:
-                result = self.tools[t['name']].invoke(t['args'])
-            results.append(ToolMessage(tool_call_id=t['id'], name=t['name'], content=str(result)))
-        print("Back to the model!")
-        return {'messages': results}
-    
-    def print_stream(self, stream):
-        for message in stream:            
-            if isinstance(message, tuple):
-                print(message)
-            else:
-                message.pretty_print()
+        #  Local coding the schema directly (fails in getting the array properly, gets a string instead)
+        #
+        # suggestions_json_schema = {
+        #     "title": "suggestions",
+        #     "description": "Suggestions from the planner reviewer.",
+        #     "type": "object",
+        #     "properties": {
+        #         "suggestions": {
+        #             "type": "array",
+        #             "description": "The list of strings, each one being a suggestion",
+        #         },
+        #     },
+        #     "required": ["suggestions",],
+        # }        
+        # critic_response = self.model.with_structured_output(suggestions_json_schema).invoke([
+        #     SystemMessage(content=self.PLAN_CRITIC_PROMPT),
+        #     HumanMessage(content=state['plan'])
+        # ])
+        
+        # Coding opeanai schema
+        #        
+        # client = instructor.from_openai(
+        #     OpenAI(
+        #         base_url="http://localhost:11434/v1",
+        #         api_key="ollama",  # required, but unused
+        #     ),
+        #     mode=instructor.Mode.JSON,
+        # )
+        # critic_response = client.chat.completions.create(
+        #     model="llama3.1",
+        #     messages=[
+        #         {
+        #             "role": "system",
+        #             "content": self.PLAN_CRITIC_PROMPT,
+        #         },
+        #         {
+        #             "role": "user",
+        #             "content": state['plan'],
+        #         },                
+        #     ],
+        #     response_model=Suggestions,
+        # )
+
+        critic_response = self.model.with_structured_output(Suggestions).invoke([
+            SystemMessage(content=self.PLAN_CRITIC_PROMPT),
+            HumanMessage(content=state['plan'])
+        ])
+        pprint.pprint(f"Response ({critic_response})")
+        
+        plan_approved = len(critic_response.elems) == 0
+        pprint.pprint(f"-------------- End Plan Critic Node (Approved: {plan_approved}) ---------------")
+        return {
+            "plan_approved": plan_approved,
+            "suggestions": critic_response.elems,
+            "lnode": "plan_critic",
+            "count": 1,
+        }
+
+    def should_refine_plan(self, state):
+        if not state["plan_approved"] and state["revision_number"] < state["max_revisions"]:
+            print(f"Refining plan! Plan Approved {state['plan_approved']} Revision Number {state['revision_number']}({state['max_revisions']})")
+            return "review"
+        return END

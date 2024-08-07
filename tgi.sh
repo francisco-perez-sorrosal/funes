@@ -9,6 +9,9 @@ model="microsoft/Phi-3-small-128k-instruct"
 model="google/gemma-7b-it"
 model="meta-llama/Meta-Llama-3-8B"
 model="meta-llama/Meta-Llama-3-8B-Instruct"
+model="google/gemma-7b-it"
+model="meta-llama/Meta-Llama-3.1-8B-Instruct"
+model="Groq/Llama-3-Groq-8B-Tool-Use"
 
 num_shard=1 # set to the number of shards you wish to use.
 volume=$HOME/data # share a volume with the Docker container to avoid downloading weights every run
