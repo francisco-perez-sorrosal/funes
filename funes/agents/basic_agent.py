@@ -295,7 +295,7 @@ class DoggieMultiAgent():
         return {
             "plan_approved": plan_approved,
             "suggestions": critic_response.elems,
-            "lnode": "plan_critic",
+            "lnode": "planner_critic",
             "count": 1,
         }
 

@@ -1,3 +1,26 @@
+from collections.abc import Generator
+
+from enum import Enum
+from typing import Any, Optional, Tuple, Union
+from pydantic import BaseModel
+
+
+class RunnerStateType(int, Enum):
+    ITER = 0
+    STOP = 1
+    MAX_ITERS = 2
+    END = 3
+
+
+class RunnerState(BaseModel):
+    type: RunnerStateType
+    thread_id: Optional[int] = None
+    last_node: Optional[str] = None
+    next_node: Optional[Tuple[str]] = None
+    message: Optional[str] = None
+    rev: Optional[int] = None
+    acount: Optional[int] = None
+
 class AgentRunner():
 
     def __init__(self, agent, max_iterations=10, share=False):
@@ -24,7 +47,7 @@ class AgentRunner():
         acount = current_state.values["count"]
         rev = current_state.values["revision_number"]
         nnode = current_state.next
-        print(lnode,nnode,self.thread_id,rev,acount)
+        # print(lnode,nnode,self.thread_id,rev,acount)
         return lnode, nnode, self.thread_id, rev,acount
 
 
@@ -39,7 +62,7 @@ class AgentRunner():
             return "", None
 
 
-    def run_agent(self, start: bool, topic: str, stop_after: list = []):
+    def run_agent(self, start: bool, topic: str, stop_after: list = []) -> Union[Generator[Any, Any, Any], RunnerState]:
         #global partial_message, thread_id,thread
         #global response, max_iterations, iterations, threads
         if start:
@@ -54,13 +77,11 @@ class AgentRunner():
             self.thread_id += 1  # new agent, new thread
             self.threads.append(self.thread_id)
         else:
-            print(f"Continuing agent {self.get_agent_name()} for thread {self.thread_id} (Iter: {self.iterations[self.thread_id]})")
             config = None  # This means continue execution when calling "invoke" below
         self.thread = {"configurable": {"thread_id": str(self.thread_id)}}
-        print(f"Invoking {self.get_agent_name()} for thread {self.thread_id} (Iter: {self.iterations[self.thread_id]})")
         while self.iterations[self.thread_id] < self.max_iterations:
             print("*" * 100)
-            print(f"Iteration {self.iterations[self.thread_id]} out of {self.max_iterations}")
+            print(f"Agent {self.get_agent_name()} (Thread: {self.thread_id} - Iter: {self.iterations[self.thread_id]} / {self.max_iterations})")
             print("*" * 100)
             self.response = self.agent.graph.invoke(config, self.thread)
             self.iterations[self.thread_id] += 1
@@ -68,19 +89,27 @@ class AgentRunner():
             self.partial_message += f"\n------------------\n\n"
             lnode, nnode, _, rev, acount = self.get_display_state()
             
-            print(f"thread_id: {self.thread_id},last_node: {lnode}, next_node: {nnode}, rev: {rev}, acount: {acount}")
-            yield self.partial_message, lnode, nnode, self.thread_id, rev, acount
+            
+            # print(f"After yield")
             config = None
             if not nnode:  
                 print("Hit the end")
-                return
-            if lnode in stop_after:
-                print(f"stopping due to stop_after {lnode}")
-                return
+                yield RunnerState(type=RunnerStateType.END)
+            elif lnode in stop_after:
+                print(f"stopping due to stop_after {lnode} -> {stop_after}")
+                yield RunnerState(type=RunnerStateType.STOP)
             else:
-                print(f"Not stopping on lnode {lnode}")
-                pass
-        return
+                print(f"Not stopping on lnode {lnode} ")
+                print(f"thread_id: {self.thread_id},last_node: {lnode}, next_node: {nnode}, rev: {rev}, acount: {acount}")
+                yield RunnerState(type=RunnerStateType.ITER,
+                                thread_id=self.thread_id, 
+                                last_node=lnode, 
+                                next_node=nnode if len(nnode) != 0 else None, 
+                                message=self.partial_message, 
+                                rev=rev, 
+                                acount=acount
+                )
+        yield RunnerState(type=RunnerStateType.MAX_ITERS)
     
     def __repr__(self):
         return f"AgentRunner(agent={self.agent}, max_iterations={self.max_iterations}, share={self.share})"

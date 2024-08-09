@@ -1,4 +1,5 @@
 import os
+from collections.abc import Generator
 from typing import Optional
 import streamlit as st
 
@@ -13,7 +14,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 
 from IPython.display import Image, display
 
-from funes.ui.runner import AgentRunner
+from funes.ui.runner import AgentRunner, RunnerStateType, RunnerState
 from funes.utils import print_event
 
 
@@ -28,33 +29,6 @@ with open("openai", "r") as file:
     openai_api_key = file.read().strip()
 st.write(f"Open API key: {openai_api_key}")
 os.environ["OPEN_API_KEY"] = openai_api_key
-
-
-
-# # Helper functions
-# # This substitutes tabs for now
-# def segmented_control(labels: list[str], key: str, default: str | None = None, max_size: int = 6) -> str:
-#     """Group of buttons with the given labels. Return the selected label."""
-#     print(f"a = {key}")
-#     if key not in st.session_state:
-#         print("b")
-#         st.session_state[key] = default or labels[0]
-#     print("c")
-#     selected_label = st.session_state[key]
-#     print("d")
-#     def set_label(label: str) -> None:
-#         print("e")
-#         st.session_state.update(**{key: label})
-#     print("f")
-#     cols = st.columns([1] * len(labels) + [max_size - len(labels)])
-#     print("g")
-#     for col, label in zip(cols, labels):
-#         print("h")
-#         btn_type = "primary" if selected_label == label else "secondary"
-#         print(f"label= {label}")
-#         col.button(label, on_click=set_label, args=(label,), use_container_width=True, type=btn_type)
-#     print(f"selected label = {selected_label}")
-#     return selected_label
 
 
 st.title("Basic UI")
@@ -112,9 +86,9 @@ if not agent_runner:
     agent_ui = AgentUI(agent_runner)
     st.session_state["agent_runner"] = agent_runner
     st.session_state["agent_ui"] = agent_ui
-    st.info(f"Agent {agent_runner.get_agent_name()} created and added to the session state")
+    st.session_state["agent_status"] = f"Agent {agent_runner.get_agent_name()} created and added to the session state"
 else:
-    st.info(f"Agent {agent_runner.get_agent_name()} found in the session state")
+    st.session_state["agent_status"] = f"Agent {agent_runner.get_agent_name()} found in the session state"
 
 
 agent_ui = st.session_state.get("agent_ui")
@@ -124,19 +98,57 @@ if not agent_ui:
 
 # tab_selected = segmented_control(["Agent", "Plan", "Snapshot"], default=None, key="control_tabs")
 
-st.header("Agent")
-st.image(agent_runner.agent.graph.get_graph().draw_png())
+st.sidebar.header("Agent")
+st.sidebar.image(agent_runner.agent.graph.get_graph().draw_png())
+
+### Status bars
+agent_status = st.empty()
+last_agent_status = st.session_state.get("agent_status", "No agent")
+
+DEFAULT_STATUS = "Ready"
+status_bar = st.empty()
+last_status = st.session_state.get("last_status", DEFAULT_STATUS)
+
+agent_col, status_col = st.columns(2)
+with agent_col:
+    agent_status.info(last_agent_status)
+
+with status_col:
+    status_bar.info(last_status)
 
 stop_after = st.multiselect("Options", ["planner", "planner_critic"])
 
+# st.info(f"Stop after: {stop_after}")
 
-def agent_invocation(user_prompt: Optional[str]):
-    if user_prompt:
-        st.chat_message(Role.USER).write(user_prompt)
-        partial_message, lnode, nnode, thread_id, rev, acount = agent_runner.run_agent(True, user_prompt)
-        st.chat_message(Role.ASSISTANT).write(f"Partial message: {partial_message}")
-
-
+def invoke_agent_steps(user_prompt: Optional[str], start: bool):
+    
+    runner_state = agent_runner.run_agent(start, user_prompt, stop_after)
+    invocation_no = 0
+    while True:
+        start = False
+        if isinstance(runner_state, Generator):
+            print("Generator")
+            runner_state = next(runner_state, None)
+        
+        if runner_state:
+            print(f"Runner state type: {runner_state.type.name}")
+            match runner_state.type:
+                case RunnerStateType.ITER:
+                    runner_state = agent_runner.run_agent(start, user_prompt, stop_after)
+                    status = f"Invocation {invocation_no}"
+                    status_bar.info(status)
+                    st.session_state["last_status"] = f"Invocation {invocation_no}"
+                case RunnerStateType.END:
+                    st.session_state["last_status"] = "Agent finished"
+                    break
+                case RunnerStateType.STOP:
+                    st.session_state["last_status"] = "Agent stopped after step"
+                    break
+                case RunnerStateType.MAX_ITERS:
+                    st.session_state["last_status"] = "Max iterations reached!"
+                    break
+        invocation_no += 1
+        
 agent_tab, plan_tab, snapshot_tab = st.tabs(["Agent", "Plan", "Snapshot"])
 
 
@@ -144,14 +156,12 @@ messages = []
 with agent_tab:
     user_prompt = st.text_area("Question", value="How much does a toy poodle weight?")
 
-    if st.button('Submit', on_click=agent_invocation, args=(user_prompt,)):       
+    if st.button('Submit', on_click=invoke_agent_steps, args=(user_prompt, True)):
         st.info("First agent invocation")
         
 
-    if st.button('Continue'):
+    if st.button('Continue', on_click=invoke_agent_steps, args=(user_prompt, False)):
         st.info("Subsequent agent invocation")
-        partial_message, lnode, nnode, thread_id, rev, acount = agent_runner.run_agent(False, user_prompt)
-        st.chat_message(Role.ASSISTANT).write(f"Partial message: {partial_message}")
         
 
 with plan_tab:
@@ -159,6 +169,4 @@ with plan_tab:
 
 with snapshot_tab:
     st.header("State Snapshots")
-    agent_ui.update_snapshots() 
-   
-
+    agent_ui.update_snapshots()
