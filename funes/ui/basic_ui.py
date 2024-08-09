@@ -48,9 +48,10 @@ class AgentUI():
         
     
     def get_snapshots(self,):
-        new_label = f"thread_id: {self.runner.thread_id}, Summary of snapshots"
-        sstate = ""
-        for state in self.runner.agent.graph.get_state_history(self.runner.thread):
+        label_template = f"thread_id: {self.runner.thread_id}, Snapshot: "
+        state_list = []
+        label_list = []
+        for i, state in enumerate(self.runner.agent.graph.get_state_history(self.runner.thread)):
             for key in ['plan', 'draft', 'critique']:
                 if key in state.values:
                     state.values[key] = state.values[key][:80] + "..."
@@ -59,21 +60,23 @@ class AgentUI():
                     state.values['content'][i] = state.values['content'][i][:20] + '...'
             if 'writes' in state.metadata:
                 state.metadata['writes'] = "not shown"
-            sstate += str(state) + "\n\n"
-        return new_label, sstate
+            state_list.append(str(state) + "\n\n")
+            label_list.append(f"{label_template} {i}")
+        return label_list, state_list
     
     def update_snapshots(self):
-        label, snapshots = self.get_snapshots()
-        st.write(f"Nada: {label}")
-        new_txt = st.text_area(label, value=snapshots)
-        return new_txt
+        new_texts = {}
+        labels, snapshots = self.get_snapshots()
+        for label, snapshot in zip(labels, snapshots):
+            new_texts[label] = st.text_area(label, value=snapshot, height=200)
+        return new_texts
     
     
     def update_agent_node_ui(self, key):
         print(f"Get agent state for key: {key}")
         label, agent_state = self.runner.get_agent_state(key)
         print(f"Labelx: {label}, agent_state: {agent_state}")
-        new_txt = st.text_area(label, value=agent_state)
+        new_txt = st.text_area(label, value=agent_state, height=500)
         return new_txt
 
     
@@ -90,6 +93,7 @@ if not agent_runner:
 else:
     st.session_state["agent_status"] = f"Agent {agent_runner.get_agent_name()} found in the session state"
 
+agent_started = agent_runner.is_started()
 
 agent_ui = st.session_state.get("agent_ui")
 if not agent_ui:
@@ -102,18 +106,18 @@ st.sidebar.header("Agent")
 st.sidebar.image(agent_runner.agent.graph.get_graph().draw_png())
 
 ### Status bars
-agent_status = st.empty()
-last_agent_status = st.session_state.get("agent_status", "No agent")
-
 DEFAULT_STATUS = "Ready"
-status_bar = st.empty()
-last_status = st.session_state.get("last_status", DEFAULT_STATUS)
 
-agent_col, status_col = st.columns(2)
+agent_col, status_col = st.columns([1,1])
 with agent_col:
+    agent_status = st.empty()
+    last_agent_status = st.session_state.get("agent_status", "No agent")
+    last_agent_status = f"{last_agent_status} - Started? {agent_started}"
     agent_status.info(last_agent_status)
 
 with status_col:
+    status_bar = st.empty()
+    last_status = st.session_state.get("last_status", DEFAULT_STATUS)    
     status_bar.info(last_status)
 
 stop_after = st.multiselect("Options", ["planner", "planner_critic"])
@@ -151,17 +155,16 @@ def invoke_agent_steps(user_prompt: Optional[str], start: bool):
         
 agent_tab, plan_tab, snapshot_tab = st.tabs(["Agent", "Plan", "Snapshot"])
 
-
 messages = []
 with agent_tab:
     user_prompt = st.text_area("Question", value="How much does a toy poodle weight?")
 
-    if st.button('Submit', on_click=invoke_agent_steps, args=(user_prompt, True)):
-        st.info("First agent invocation")
-        
-
-    if st.button('Continue', on_click=invoke_agent_steps, args=(user_prompt, False)):
-        st.info("Subsequent agent invocation")
+    if not agent_started:
+        if st.button('Submit', on_click=invoke_agent_steps, args=(user_prompt, True)):
+            st.session_state["agent_status"] = "First agent invocation"
+    else:
+        if st.button('Continue', on_click=invoke_agent_steps, args=(user_prompt, False)):
+            st.session_state["agent_status"] = "Subsequent agent invocation"
         
 
 with plan_tab:

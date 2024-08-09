@@ -31,6 +31,7 @@ class AgentRunner():
         self.max_iterations = max_iterations
         self.iterations = []
         self.threads = []
+        self.threads_started = {}
         self.thread_id = -1
         self.thread = {"configurable": 
             {"thread_id": str(self.thread_id)}
@@ -61,6 +62,8 @@ class AgentRunner():
         else:
             return "", None
 
+    def is_started(self):
+        return self.threads_started.get(self.thread_id, False)
 
     def run_agent(self, start: bool, topic: str, stop_after: list = []) -> Union[Generator[Any, Any, Any], RunnerState]:
         #global partial_message, thread_id,thread
@@ -76,6 +79,7 @@ class AgentRunner():
                     'count':0}
             self.thread_id += 1  # new agent, new thread
             self.threads.append(self.thread_id)
+            self.threads_started[self.thread_id] = True
         else:
             config = None  # This means continue execution when calling "invoke" below
         self.thread = {"configurable": {"thread_id": str(self.thread_id)}}
