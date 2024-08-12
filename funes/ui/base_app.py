@@ -35,7 +35,7 @@ if lm is None:
             st.write(f"Model {model}")
             lm = get_llm(model, provider, port=8081)
             st.session_state["lm"] = lm
-            st.sidebar.info(f"LM {lm} selected")
+            st.sidebar.info(f"LM selected:\n{lm}")
             st.rerun()
         else:
             st.sidebar.warning(f"No LM selected")
