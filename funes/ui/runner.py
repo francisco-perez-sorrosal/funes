@@ -145,7 +145,7 @@ class AgentRunner():
             current_thread_config = current_thread.config
         return current_thread_config
 
-    def run_agent(self, topic: str, stop_after: list = []) -> Union[Generator[Any, Any, Any], RunnerState]:
+    def run_agent(self, topic: str, max_plan_revisions: int = 3, stop_after: list = []) -> Union[Generator[Any, Any, Any], RunnerState]:
 
         current_thread = self._get_current_thread()
         if current_thread is None:
@@ -154,7 +154,7 @@ class AgentRunner():
                 'lnode': "", 
                 'planner': "no plan",
                 'revision_number': 0,
-                'max_revisions': 1,
+                'max_plan_revisions': max_plan_revisions,
                 'count':0
             }
             current_thread = self._new_thread(initial_agent_state)

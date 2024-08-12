@@ -141,7 +141,7 @@ class AgentState(TypedDict):
     plan: str
     plan_approved: bool
     suggestions: List[str]
-    max_revisions: int
+    max_plan_revisions: int
     revision_number: int
     # draft: str
     # critique: str
@@ -150,6 +150,7 @@ class AgentState(TypedDict):
     count: Annotated[int, operator.add]
 
 class DoggieMultiAgent():
+
     def __init__(self, lm, name="Pepe"):
         
         self.name = name
@@ -231,6 +232,7 @@ class DoggieMultiAgent():
         pprint.pprint("-------------- End Plan Node ---------------")
         return {"plan": response.content,
                "lnode": "planner",
+               "revision_number": state.get("revision_number", 1) + 1,
                 "count": 1,
                }
         
@@ -300,7 +302,9 @@ class DoggieMultiAgent():
         }
 
     def should_refine_plan(self, state):
-        if not state["plan_approved"] and state["revision_number"] < state["max_revisions"]:
-            print(f"Refining plan! Plan Approved {state['plan_approved']} Revision Number {state['revision_number']}({state['max_revisions']})")
+        print("-------------- Should Refine Plan ---------------")
+        print(f"State: {state}")
+        if not state["plan_approved"] and state["revision_number"] < state["max_plan_revisions"]:
+            print(f"Refining plan! Plan Approved {state['plan_approved']} Revision Number {state['revision_number']}({state['max_plan_revisions']})")
             return "review"
         return END

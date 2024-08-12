@@ -82,12 +82,12 @@ class AgentUI:
         new_txt = st.text_area(label, value=agent_state, height=500)
         return new_txt
     
-    def invoke_agent_steps(self, new_agent: bool, user_prompt: Optional[str], stop_after: list = []):
+    def invoke_agent_steps(self, new_agent: bool, user_prompt: Optional[str], max_plan_revisions: int = 3, stop_after: list = []):
     
         if new_agent:
             st.info("Creating a new agent")
             self.runner.set_current_thread(None)
-        runner_state = self.runner.run_agent(user_prompt, stop_after)
+        runner_state = self.runner.run_agent(user_prompt, max_plan_revisions, stop_after)
         call_cnt = 0
 
         while True:
@@ -99,7 +99,7 @@ class AgentUI:
                 print(f"Runner state type: {runner_state.type.name}")
                 match runner_state.type:
                     case RunnerStateType.ITER:
-                        runner_state = self.runner.run_agent(user_prompt, stop_after)
+                        runner_state = self.runner.run_agent(user_prompt, max_plan_revisions, stop_after)
                         status = f"Invocation {call_cnt}"
                         status_bar.info(status)
                         st.session_state["last_status"] = f"Invocation {call_cnt}"
@@ -177,14 +177,15 @@ messages = []
 with agent_tab:
 
     stop_after = st.multiselect("Stop after", ["planner", "planner_critic"])
+    max_plan_revisions = st.number_input("Max plan revisions", value=3)
     user_prompt = st.text_area("Question", value="How much does a toy poodle weight?")
 
     col1, col2 = st.columns([1,1])
     with col1:
-        if st.button('New agent', on_click=agent_ui.invoke_agent_steps, args=(True, user_prompt, stop_after)):
+        if st.button('New agent', on_click=agent_ui.invoke_agent_steps, args=(True, user_prompt, max_plan_revisions, stop_after)):
             st.session_state["agent_status"] = "First agent invocation"
     with col2:
-        if st.button('Continue', on_click=agent_ui.invoke_agent_steps, args=(False, user_prompt, stop_after)):
+        if st.button('Continue', on_click=agent_ui.invoke_agent_steps, args=(False, user_prompt, max_plan_revisions, stop_after)):
             st.session_state["agent_status"] = "Subsequent agent invocation"        
 
 with plan_tab:
