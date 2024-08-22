@@ -1,6 +1,8 @@
 import streamlit as st
 
-from funes.lang_utils import models, get_llm, providers
+# from funes.lang_utils import models, get_llm
+from llm_foundation.lm import get_lm, get_model_catalog
+from llm_foundation.basic_structs import Provider, LMConfig
 
 
 st.set_page_config(layout="wide")
@@ -22,7 +24,10 @@ if lm is None:
     st.sidebar.markdown("## Select LLM")
     with st.sidebar.form('select_lm_form'):
         # Dropdown box for selecting provider options
-        provider = st.selectbox("Select a provider", providers, index=1)
+        providers = [p.name for p in Provider]        
+        provider = st.selectbox("Select a provider", providers, index=0)
+        provider_as_enum = Provider[provider]
+        models = get_model_catalog(provider_as_enum, ["gpt-4o"])
         model_options = [k for k in models.keys() if k.startswith(provider.lower())]
         selected_model = st.selectbox("Select a model", model_options, index=0)
         model = models.get(selected_model, "")
@@ -32,8 +37,10 @@ if lm is None:
         
         select_btn = st.form_submit_button('Select LM')
         if select_btn:
-            st.write(f"Model {model}")
-            lm = get_llm(model, provider, port=8081)
+            st.write(f"Model name {model}")
+            lm_config = LMConfig(model=model, provider=provider_as_enum)
+            lm = get_lm(lm_config)
+            # lm = get_llm(model, provider, port=8081)
             st.session_state["lm"] = lm
             st.sidebar.info(f"LM selected:\n{lm}")
             st.rerun()

@@ -14,6 +14,8 @@ from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, Too
 from langchain_core.tools import BaseTool, tool
 from langchain_core.callbacks.manager import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langgraph.graph import StateGraph, END
+from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolInvocation, ToolExecutor
 # from langchain_core.pydantic_v1 import BaseModel, Field
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated, TypedDict
@@ -37,14 +39,15 @@ def average_dog_weight(breed_name):
     Args:
         breed_name: the name of the dog breed
     """
-    if breed_name in "Scottish Terrier": 
-        return("Scottish Terriers average 20 lbs")
-    elif breed_name in "Border Collie":
-        return("a Border Collies average weight is 37 lbs")
-    elif breed_name in "Toy Poodle":
-        return("a toy poodle average weight is 7 lbs")
-    else:
-        return("An average dog weights 50 lbs")
+    match breed_name.lower():
+        case "scottish terrier": 
+            return("Scottish Terriers average 20 lbs")
+        case "border collie":
+            return("a Border Collies average weight is 37 lbs")
+        case "toy poodle":
+            return("a toy poodle average weight is 7 lbs")
+        case _:
+            return("An average dog weights 50 lbs")
 
 
 class MathExp(BaseModel):
@@ -96,9 +99,9 @@ class DogBreedWeighter(BaseTool):
         breed_name = breed_name.lower().strip()
         """Used to return the weight of a dog breed."""
         if breed_name in "scottish terrier": 
-            return("Scottish Terriers average 20 lbs")
+            return("a Scottish Terrier average 20 lbs")
         elif breed_name in "border collie":
-            return("a Border Collies average weight is 37 lbs")
+            return("a Border Collie average weight is 37 lbs")
         elif breed_name in "toy poodle":
             return("a toy poodles average weight is 7 lbs")
         else:
@@ -130,6 +133,11 @@ class Suggestions(BaseModel):
     """Suggestions to the plan."""
     elems: List[str] #= Field(description="List of suggestions to improve the plan.")
 
+class CandidateResponseValidator(BaseModel):
+    """Validation for a candidate response."""
+    validation: bool
+
+
 # class Suggestions(TypedDict):
 #     """Suggestions to the plan."""
 #     elems: Annotated[List[str], ..., "List of suggestions to improve the plan."]
@@ -143,11 +151,11 @@ class AgentState(TypedDict):
     suggestions: List[str]
     max_plan_revisions: int
     revision_number: int
-    # draft: str
-    # critique: str
-    # content: List[str]
-    # queries: List[str]
     count: Annotated[int, operator.add]
+    messages: Annotated[list, add_messages]
+    evidences: List[str]
+    candidate_response: str
+    final_response: str
 
 class DoggieMultiAgent():
 
@@ -155,32 +163,19 @@ class DoggieMultiAgent():
         
         self.name = name
         self.model = lm
-        self.model.bind_tools(langchain_tools)
-        
-        # self.PLAN_PROMPT = """
-        # You are an expert planner knowledgeable about all that has do do with dogs and dog breeds \
-        # , so you can be tasked to make a plan to manage to answer any question related to that. \
-        # For example you can be tasked with the task to calculate the average weight of one or several dogs of \
-        # different breeds, so you can be come up with plan consisting of a series of steps similar to these: \
-        # 1. Identify the breed of the dog or dogs that are involved in the question. \
-        # 2. Calculate the average weight of each dog depending on its breed. \
-        # 3. Perform the math calculations to get the final result. \
-        # 4. Reflect on the results and come up with a critique the plan if necessary. \
-        # 5. Execute the critique plan if you can't find a satisfactory response. Otherwise deliver what you to the user. \
-        # If the user provides suggestions, respond with a revised version of your previous attempts. \
-        # Utilize all the information below as needed: \
-        # {suggestions}""".strip()
+        self.model = self.model.bind_tools(langchain_tools)
+        self.tool_executor = ToolExecutor(langchain_tools)
+  
         
         self.PLAN_PROMPT = """
         You are an expert planner with knowledge and tools about all that has \
         do do with dogs and dog breeds, so you can be tasked to make a plan \
-        using that knowledge and tools to manage to answer any user task of that topic. \
+        using that knowledge manage to answer any user task of that topic. \
+        Avoid any step for which you don't have a clear idea and avoid ask the user for clarification. \
         Think step by step. \
-        Tools available: \
-        "average_dog_weight": Returns the average weight of a dog breed. \
         Utilize the suggestions below as needed to improve the plan: \
         {suggestions} \
-        Just respond with the plan steps.. \
+        Just respond with the plan steps. \
         User task: """.strip()
         
         self.PLAN_CRITIC_PROMPT = """
@@ -191,10 +186,28 @@ class DoggieMultiAgent():
         Be straight to the point and don't overcomplicate steps. \
         If the plan already seems reasonable just return a list of empty suggestions.""".strip()
         
+        self.PLAN_EXECUTOR_PROMPT = """
+        You are a plan executor tasked with finding the response to a user question following a plan. \
+        Generate the best response possible for the user's request using tools if needed. \
+        If the information is in the evidences, do not call any tool and use the evidence information \
+        to generate the response. \
+        Evidences: \
+        {evidences} \
+        ------\n \
+        {content}"""
+
+        self.RESPONSE_VALIDATOR_PROMPT = """
+        You are an expert judge for validationg responses to questions. \
+        Given the question and the candidate response below, return if \
+        you agree or not that the response makes sense. Respond only with True or False. """.strip()
+        
         # Define Agent graph nodes
         builder = StateGraph(AgentState)
         builder.add_node("planner", self.plan_node)
         builder.add_node("planner_critic", self.plan_critic)
+        builder.add_node("plan_executor", self.plan_executor_node)
+        builder.add_node("action", self.call_tool)
+        builder.add_node("response_validator", self.response_validator)
         
         # Define edges
         builder.add_edge("planner", "planner_critic")
@@ -203,9 +216,32 @@ class DoggieMultiAgent():
             self.should_refine_plan, 
             {
                 "review": "planner",  # Back to planner
+                "plan_executor": "plan_executor", 
+            }
+        )
+        
+        builder.add_conditional_edges(
+            "plan_executor", 
+            self.should_continue, 
+            {
+                "response_validation": "response_validator",
+                "reexecute_tool": "action",
                 END: END, 
             }
         )
+
+        builder.add_conditional_edges(
+            "response_validator", 
+            self.should_accept_response, 
+            {
+                "no": "plan_executor",
+                "yes": END,
+            }
+        )
+
+        
+        builder.add_edge("action", "plan_executor")
+
         
         # Entry point for the workflow
         builder.set_entry_point("planner")
@@ -231,12 +267,10 @@ class DoggieMultiAgent():
         pprint.pprint(f"Response:\n{response.content}")
         pprint.pprint("-------------- End Plan Node ---------------")
         return {"plan": response.content,
-               "lnode": "planner",
-               "revision_number": state.get("revision_number", 1) + 1,
+                "lnode": "planner",
+                "revision_number": state.get("revision_number", 1) + 1,
                 "count": 1,
-               }
-        
-        
+        }
 
     def plan_critic(self, state: AgentState):
         
@@ -301,10 +335,108 @@ class DoggieMultiAgent():
             "count": 1,
         }
 
+    def plan_executor_node(self, state: AgentState):
+        print("-------------- Plan Executor Node ---------------")
+        content = state['plan']
+        evidences = "\n\n".join(state['evidences'] or [])
+        messages = [
+            SystemMessage(
+                content=self.PLAN_EXECUTOR_PROMPT.format(content=content, evidences=evidences)
+            ),
+            HumanMessage(
+                content=f"Here is the task:\n\n{state['task']}"
+            ),
+            ]
+        print(f"Messages: {messages}")
+        response = self.model.invoke(messages)
+        print(f"Response: {response}")
+        print("-------------- End Plan Executor Node ---------------")
+        return {
+            "messages": [response],
+            "lnode": "plan_executor",
+            "count": 1,
+            "candidate_response": response.content if not response.tool_calls else "",
+        }
+        
+    # Define the function to execute tools
+    def call_tool(self, state):
+        print("-------------- Call Tool ---------------")
+        messages = state["messages"]
+        # Based on the continue condition
+        # we know the last message involves a function call
+        last_message = messages[-1]
+        # We construct an ToolInvocation from the function_call
+        tool_call = last_message.tool_calls[0]
+        action = ToolInvocation(
+            tool=tool_call["name"],
+            tool_input=tool_call["args"],
+        )
+        # We call the tool_executor and get back a response
+        response = self.tool_executor.invoke(action)
+        print(f"Response: {response}")
+        # We use the response to create a ToolMessage
+        tool_message = ToolMessage(
+            content=str(response), name=action.tool, tool_call_id=tool_call["id"]
+        )
+        print(f"Tool Message: {tool_message}")
+        print("-------------- End Call Tool ---------------")
+        # We return a list, because this will get added to the existing list
+        return {
+            "lnode": "call_tool",
+            "messages": [tool_message],
+            "evidences": state["evidences"] + [response],
+        }
+
+    def response_validator(self, state):
+        print("-------------- Response Validator ---------------")
+        print(state)
+        candidate_response = state["candidate_response"]
+        messages = [
+            SystemMessage(
+                content=self.RESPONSE_VALIDATOR_PROMPT
+            ),
+            HumanMessage(
+                content=f"Question: {state['task']}\n\nResponse: {candidate_response}"
+            ),
+            ]
+        
+        response = self.model.with_structured_output(CandidateResponseValidator).invoke(messages)
+        print(f"Validator response: {response}")
+        return {
+            "lnode": "response_validator",
+            'final_response': candidate_response if response.validation else "",
+            'candidate_response': '',
+        }
+
     def should_refine_plan(self, state):
         print("-------------- Should Refine Plan ---------------")
         print(f"State: {state}")
         if not state["plan_approved"] and state["revision_number"] < state["max_plan_revisions"]:
             print(f"Refining plan! Plan Approved {state['plan_approved']} Revision Number {state['revision_number']}({state['max_plan_revisions']})")
             return "review"
-        return END
+        return "plan_executor"
+    
+    def should_continue(self, state):
+        print("-------------- Should Continue ---------------")
+        print(f"State: {state}")
+        messages = state["messages"]
+        print(f"Messages: {messages}")
+        last_message = messages[-1]
+        print(f"-----Last Message: {last_message}----")
+        # If there is no function call, then we finish
+        
+        if not last_message.tool_calls:
+            if state['candidate_response'] != "":
+                print("----- No function call, but candidate response -----")
+                return "response_validation"
+            print("----- No function call, finishing -----")
+            return END
+        else:
+            print("----- Function call, reexecuting -----")
+            return "reexecute_tool"
+
+    def should_accept_response(self, state):
+        resp = "no" if state['final_response'] == "" else "yes"
+        print(f"-------------- Should Accept Response ({resp}) ---------------")
+        return resp
+        

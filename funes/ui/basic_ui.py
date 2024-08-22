@@ -56,7 +56,7 @@ class AgentUI:
         current_thread_config = self.runner.current_thread_config()
         st.write(f"Current thread config: {current_thread_config}")
         for i, state in enumerate(self.runner.agent.graph.get_state_history(current_thread_config)):
-            for key in ['plan', 'draft', 'critique']:
+            for key in ['plan']:
                 if key in state.values:
                     state.values[key] = state.values[key][:80] + "..."
             if 'content' in state.values:
@@ -64,7 +64,7 @@ class AgentUI:
                     state.values['content'][i] = state.values['content'][i][:20] + '...'
             if 'writes' in state.metadata:
                 state.metadata['writes'] = "not shown"
-            state_list.append(str(state) + "Culo \n\n")
+            state_list.append(str(state) + "\n\n")
             label_list.append(f"{label_template} {i}")
         return label_list, state_list
     
@@ -105,6 +105,8 @@ class AgentUI:
                         st.session_state["last_status"] = f"Invocation {call_cnt}"
                     case RunnerStateType.END:
                         st.session_state["last_status"] = "Agent finished"
+                        thread_id, final_resp = self.runner.get_final_response()
+                        st.session_state["final_response"] = f"({thread_id}) Resp: {final_resp}"
                         break
                     case RunnerStateType.STOP:
                         st.session_state["last_status"] = "Agent stopped after step"
@@ -179,6 +181,9 @@ with agent_tab:
     stop_after = st.multiselect("Stop after", ["planner", "planner_critic"])
     max_plan_revisions = st.number_input("Max plan revisions", value=3)
     user_prompt = st.text_area("Question", value="How much does a toy poodle weight?")
+    final_resp = st.session_state.get("final_response", None)
+    if final_resp is not None and final_resp != "":
+        st.success(st.session_state["final_response"])
 
     col1, col2 = st.columns([1,1])
     with col1:

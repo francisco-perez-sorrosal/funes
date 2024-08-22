@@ -144,6 +144,15 @@ class AgentRunner():
         else:
             current_thread_config = current_thread.config
         return current_thread_config
+    
+    def get_final_response(self):
+        thread_id = self.current_thread_id()
+        thread_config = self.current_thread_config()
+        values = self.agent.graph.get_state(thread_config).values
+        import pprint
+        print(type(values))
+        pprint.pprint(values)
+        return thread_id, values['final_response']
 
     def run_agent(self, topic: str, max_plan_revisions: int = 3, stop_after: list = []) -> Union[Generator[Any, Any, Any], RunnerState]:
 
@@ -155,7 +164,10 @@ class AgentRunner():
                 'planner': "no plan",
                 'revision_number': 0,
                 'max_plan_revisions': max_plan_revisions,
-                'count':0
+                'count':0,
+                'evidences': [],
+                'candidate_response': "",
+                'final_response': "",
             }
             current_thread = self._new_thread(initial_agent_state)
             self.set_current_thread(current_thread.id)
