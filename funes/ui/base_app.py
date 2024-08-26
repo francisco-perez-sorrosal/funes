@@ -37,11 +37,8 @@ if lm is None:
         
         select_btn = st.form_submit_button('Select LM')
         if select_btn:
-            st.write(f"Model name {model}")
             lm_config = LMConfig(model=model, provider=provider_as_enum)
-            lm = get_lm(lm_config)
-            # lm = get_llm(model, provider, port=8081)
-            st.session_state["lm"] = lm
+            st.session_state["lm"] = get_lm(lm_config)
             st.sidebar.info(f"LM selected:\n{lm}")
             st.rerun()
         else:
