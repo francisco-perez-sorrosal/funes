@@ -87,6 +87,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.6-ha6fb4c9_0.conda
       - pypi: https://files.pythonhosted.org/packages/a0/09/e7637f4f0760cad4d67347bbd8311c6ad0259a3fc01f04555af9e84bd378/aiohttp-3.9.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/76/ac/a7305707cb852b7e16ff80eaf5692309bde30e2b1100a1fcacdc8f731d97/aiosignal-1.3.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/00/c4/c93eb22025a2de6b83263dfe3d7df2e19138e345bca6f18dba7394120930/aiosqlite-0.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/7f/50/9fb3a5c80df6eb6516693270621676980acd6d5a9a7efdbfa273f8d616c7/alembic-1.13.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/46/30/2118537233fa72c1d91a81f5908a7e843a6601ccc68b76838ebc4951505f/altair-5.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/78/b6/6307fbef88d9b5ee7421e68d78a9f162e0da4900bc5f5793f6d3d0e34fb8/annotated_types-0.7.0-py3-none-any.whl
@@ -96,6 +97,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/a7/fa/e01228c2938de91d47b307831c62ab9e4001e747789d0b05baf779a6488c/async_timeout-4.0.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e0/44/827b2a91a5816512fcaf3cc4ebc465ccd5d598c45cefa6703fcf4a79018f/attrs-23.2.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/df/73/b6e24bd22e6720ca8ee9a85a0c4a2971af8497d8f3193fa05390cbd46e09/backoff-2.2.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/b1/fe/e8c672695b37eecc5cbf43e1d0638d88d66ba3a44c4d321c796f4e59167f/beautifulsoup4-4.12.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/bb/2a/10164ed1f31196a2f7f3799368a821765c62851ead0e630ab52b8e14b4d0/blinker-1.8.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e2/03/f3c8ba0a6b6e30d7d18c40faab90807c9bb5e9a1e3b2fe2008af624a9c97/build-1.2.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/fb/2b/a64c2d25a37aeb921fddb929111413049fc5f8b9a4c1aefaffaafe768d54/cachetools-5.3.3-py3-none-any.whl
@@ -151,8 +153,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/ee/07/44bd408781594c4d0a027666ef27fab1e441b109dc3b76b4f836f8fd04fe/jsonschema_specifications-2023.12.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/cf/d3/c4bb02580bc0db807edb9a29b2d0c56031be1ef0d804336deb2699a470f6/jupyter_client-8.6.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c9/fb/108ecd1fe961941959ad0ee4e12ee7b8b1477247f30b1fdfd83ceaf017f0/jupyter_core-5.7.2-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/3f/ae/a5ac2059e8dcc326f8ad4e10d907f6fdf1f920ab060020f12ad64ca26172/langchain-0.2.6-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/be/34/9e064763f81811257667a2a6fc83a3b3e679b62a38fdb6a996c6661c7cd2/langchain_community-0.2.6-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/8a/27/99ecada550317ef7bc89f439cd491ac106bbe9bae31ecdb47d2c6e03016e/langchain-0.2.14-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/83/3a/3becea565ec4232d6d7f6d8774696e2d64e94b388fa3c45bfa264a3787c2/langchain_community-0.2.12-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/50/f8/595cff3ae7219faaf378392d3fb3998b1de7082c270811e9b0a7aef179ca/langchain_core-0.2.34-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/97/22/a594f41bf82d2d49809583c279685598860fbd2a9fd62be2ab4f9b542950/langchain_experimental-0.0.63-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/39/ce/ad7f50a6289cf562747df9a966b4d60a848571db2e57ad8d00dca2478096/langchain_huggingface-0.0.3-py3-none-any.whl
@@ -160,10 +162,12 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/bb/82/6d6cb06f3fa41610918815a852ac7a2f067ec79df76c8d651014f12d6c31/langchain_openai-0.1.22-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/06/76/9e0ca1b8881f64bf927f2205bf6c43a085c04646a71d911b3c05d76e90bb/langchain_text_splitters-0.2.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/63/af/1ede340c6283f6a70cf0e2aaa4e9c8e817ff54b0ec4df4fd956d81abffea/langchainhub-0.1.20-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/48/d3/2237c26829cab5bc7e661ffd49a8a2e1bbb1eac33fd4a82725f155345288/langgraph-0.1.19-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/10/ec/cd0e4318066ca44424498a0729829ccb94de37b8f699b3c41f7c37252567/langgraph-0.2.13-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/33/5a/fbaf678765257a55a90406a4a1a0f36a0f985c32e780e3acf33ce826192c/langgraph_checkpoint-1.0.6-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/8b/61/19b2c74d2b5fb0f7d8a97bb2d37f457b15c8cf14aca2523e97943ab003fc/langgraph_checkpoint_sqlite-1.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/11/4f/1d89e18d542b4545787a806dd8b485b5178781cd6c99e7c79285fd862a34/langsmith-0.1.82-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/9c/eef7c591e6dc952f3636cfe0df712c0f9916cedf317810a3bb53ccb65cdd/lark-1.1.9-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/f0/dc/be9f9b5eb1a446e4b19258f807badc2e4662154d94c48848b4379a48c989/llm_foundation-0.0.4-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/2f/40/acd90e2082bc648646d44116cc232e4484a717ab3807a8cf89ee3fc0b246/llm_foundation-0.0.6-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2b/01/764489e364948f52aa7cb958a91a8dafd489357d2401f66946542bbc1764/llvmlite-0.42.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2d/fd/e21d1f0608da7696746c5d4cdf2f944d714daf63a97def416e0f3c154f98/lm_format_enforcer-0.10.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/ba/e29b2a5d12d5fad9c037ad7d5c3dffb22864d6511310bffa414c56408995/loadenv-0.1.1-py3-none-any.whl
@@ -245,6 +249,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a7/a5/10f97f73544edcdef54409f1d839f6049a0d79df68adbc1ceb24d1aaca42/smmap-5.0.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/d1/c2/fe97d779f3ef3b15f05c94a2f1e3d21732574ed441687474db9d342a7315/soupsieve-2.6-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/c2/83/2ed47c5b841496d4e106f8ed04316c6193ba8615ab70fe769a593237b20b/SQLAlchemy-2.0.30-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/fd/18/31fa32ed6c68ba66220204ef0be798c349d0a20c1901f9d4a794e08c76d8/starlette-0.37.2-py3-none-any.whl
@@ -340,6 +345,25 @@ packages:
   requires_dist:
   - frozenlist>=1.1.0
   requires_python: '>=3.7'
+- kind: pypi
+  name: aiosqlite
+  version: 0.20.0
+  url: https://files.pythonhosted.org/packages/00/c4/c93eb22025a2de6b83263dfe3d7df2e19138e345bca6f18dba7394120930/aiosqlite-0.20.0-py3-none-any.whl
+  sha256: 36a1deaca0cac40ebe32aac9977a6e2bbc7f5189f23f4a54d5908986729e5bd6
+  requires_dist:
+  - typing-extensions>=4.0
+  - attribution==1.7.0 ; extra == 'dev'
+  - black==24.2.0 ; extra == 'dev'
+  - coverage[toml]==7.4.1 ; extra == 'dev'
+  - flake8==7.0.0 ; extra == 'dev'
+  - flake8-bugbear==24.2.6 ; extra == 'dev'
+  - flit==3.9.0 ; extra == 'dev'
+  - mypy==1.8.0 ; extra == 'dev'
+  - ufmt==2.3.0 ; extra == 'dev'
+  - usort==1.0.8.post1 ; extra == 'dev'
+  - sphinx==7.2.6 ; extra == 'docs'
+  - sphinx-mdinclude==0.5.3 ; extra == 'docs'
+  requires_python: '>=3.8'
 - kind: pypi
   name: alembic
   version: 1.13.1
@@ -513,6 +537,19 @@ packages:
   url: https://files.pythonhosted.org/packages/df/73/b6e24bd22e6720ca8ee9a85a0c4a2971af8497d8f3193fa05390cbd46e09/backoff-2.2.1-py3-none-any.whl
   sha256: 63579f9a0628e06278f7e47b7d7d5b6ce20dc65c5e96a6f3ca99a6adca0396e8
   requires_python: '>=3.7,<4.0'
+- kind: pypi
+  name: beautifulsoup4
+  version: 4.12.3
+  url: https://files.pythonhosted.org/packages/b1/fe/e8c672695b37eecc5cbf43e1d0638d88d66ba3a44c4d321c796f4e59167f/beautifulsoup4-4.12.3-py3-none-any.whl
+  sha256: b80878c9f40111313e55da8ba20bdba06d8fa3969fc68304167741bbf9e082ed
+  requires_dist:
+  - soupsieve>1.2
+  - cchardet ; extra == 'cchardet'
+  - chardet ; extra == 'chardet'
+  - charset-normalizer ; extra == 'charset-normalizer'
+  - html5lib ; extra == 'html5lib'
+  - lxml ; extra == 'lxml'
+  requires_python: '>=3.6.0'
 - kind: pypi
   name: blinker
   version: 1.8.2
@@ -1242,7 +1279,7 @@ packages:
   name: funes
   version: 0.1.0
   path: .
-  sha256: 17592998d2542aaa21b89dc02a419fc1d8184af639b8f2083cea3e1455bffdfd
+  sha256: c13a4fd9088863158784b5be78ee417d4ba66aff7060d581e1e07ab2723add0f
   requires_dist:
   - rich
   - dspy-ai
@@ -1263,7 +1300,8 @@ packages:
   - langchain-experimental
   - openai
   - langchain-openai
-  - llm-foundation
+  - llm-foundation>=0.0.6
+  - langgraph-checkpoint-sqlite>=1.0.0,<2
   requires_python: '>=3.10,<3.11'
   editable: true
 - kind: conda
@@ -1957,15 +1995,15 @@ packages:
   requires_python: '>=3.8'
 - kind: pypi
   name: langchain
-  version: 0.2.6
-  url: https://files.pythonhosted.org/packages/3f/ae/a5ac2059e8dcc326f8ad4e10d907f6fdf1f920ab060020f12ad64ca26172/langchain-0.2.6-py3-none-any.whl
-  sha256: f86e8a7afd3e56f8eb5ba47f01dd00144fb9fc2f1db9873bd197347be2857aa4
+  version: 0.2.14
+  url: https://files.pythonhosted.org/packages/8a/27/99ecada550317ef7bc89f439cd491ac106bbe9bae31ecdb47d2c6e03016e/langchain-0.2.14-py3-none-any.whl
+  sha256: eed76194ee7d9c081037a3df7868d4de90e0410b51fc1ca933a8379e464bf40c
   requires_dist:
   - pyyaml>=5.3
   - sqlalchemy>=1.4,<3
   - aiohttp>=3.8.3,<4.0.0
   - async-timeout>=4.0.0,<5.0.0 ; python_version < '3.11'
-  - langchain-core>=0.2.10,<0.3.0
+  - langchain-core>=0.2.32,<0.3.0
   - langchain-text-splitters>=0.2.0,<0.3.0
   - langsmith>=0.1.17,<0.2.0
   - numpy>=1,<2 ; python_version < '3.12'
@@ -1976,16 +2014,16 @@ packages:
   requires_python: '>=3.8.1,<4.0'
 - kind: pypi
   name: langchain-community
-  version: 0.2.6
-  url: https://files.pythonhosted.org/packages/be/34/9e064763f81811257667a2a6fc83a3b3e679b62a38fdb6a996c6661c7cd2/langchain_community-0.2.6-py3-none-any.whl
-  sha256: 758cc800acfe5dd396bf8ba1b57c4792639ead0eab48ed0367f0732ec6ee1f68
+  version: 0.2.12
+  url: https://files.pythonhosted.org/packages/83/3a/3becea565ec4232d6d7f6d8774696e2d64e94b388fa3c45bfa264a3787c2/langchain_community-0.2.12-py3-none-any.whl
+  sha256: 50e74473dd2309bdef561760afbbf0c5ea17ed91fc4dfa0d52279dd16d6d34e0
   requires_dist:
   - pyyaml>=5.3
   - sqlalchemy>=1.4,<3
   - aiohttp>=3.8.3,<4.0.0
   - dataclasses-json>=0.5.7,<0.7
-  - langchain>=0.2.6,<0.3.0
-  - langchain-core>=0.2.10,<0.3.0
+  - langchain>=0.2.13,<0.3.0
+  - langchain-core>=0.2.30,<0.3.0
   - langsmith>=0.1.0,<0.2.0
   - numpy>=1,<2 ; python_version < '3.12'
   - numpy>=1.26.0,<2.0.0 ; python_version >= '3.12'
@@ -2067,12 +2105,30 @@ packages:
   requires_python: '>=3.8.1,<4.0'
 - kind: pypi
   name: langgraph
-  version: 0.1.19
-  url: https://files.pythonhosted.org/packages/48/d3/2237c26829cab5bc7e661ffd49a8a2e1bbb1eac33fd4a82725f155345288/langgraph-0.1.19-py3-none-any.whl
-  sha256: 7155b86e5d3559e986b3cbcd1c34ee96959136814bc2db679f84fc5fa7a8e61c
+  version: 0.2.13
+  url: https://files.pythonhosted.org/packages/10/ec/cd0e4318066ca44424498a0729829ccb94de37b8f699b3c41f7c37252567/langgraph-0.2.13-py3-none-any.whl
+  sha256: 37cfbcfc8074cdeb6a3a568b56ee8141066859cf4e1ed9a5fa4ac9697f5a08e4
+  requires_dist:
+  - langchain-core>=0.2.27,<0.3
+  - langgraph-checkpoint>=1.0.2,<2.0.0
+  requires_python: '>=3.9.0,<4.0'
+- kind: pypi
+  name: langgraph-checkpoint
+  version: 1.0.6
+  url: https://files.pythonhosted.org/packages/33/5a/fbaf678765257a55a90406a4a1a0f36a0f985c32e780e3acf33ce826192c/langgraph_checkpoint-1.0.6-py3-none-any.whl
+  sha256: b2435e1e42b11cfc8f3ce06d114c75cd04846e83a0214f75e9b4f512e3d5fa4e
   requires_dist:
   - langchain-core>=0.2.22,<0.3
-  requires_python: '>=3.9.0,<4.0'
+  requires_python: '>=3.9.0,<4.0.0'
+- kind: pypi
+  name: langgraph-checkpoint-sqlite
+  version: 1.0.0
+  url: https://files.pythonhosted.org/packages/8b/61/19b2c74d2b5fb0f7d8a97bb2d37f457b15c8cf14aca2523e97943ab003fc/langgraph_checkpoint_sqlite-1.0.0-py3-none-any.whl
+  sha256: 61501ee2be1bdb51aaf5ac005396d2f54c76e362d085d9d3c06b5415c061ef50
+  requires_dist:
+  - aiosqlite>=0.20.0,<0.21.0
+  - langgraph-checkpoint>=1.0.1,<2.0.0
+  requires_python: '>=3.9.0,<4.0.0'
 - kind: pypi
   name: langsmith
   version: 0.1.82
@@ -2539,14 +2595,17 @@ packages:
   timestamp: 1716874187109
 - kind: pypi
   name: llm-foundation
-  version: 0.0.4
-  url: https://files.pythonhosted.org/packages/f0/dc/be9f9b5eb1a446e4b19258f807badc2e4662154d94c48848b4379a48c989/llm_foundation-0.0.4-py3-none-any.whl
-  sha256: 2a2595313778cae2805030dfe06fb72e4665897f6896e9b37d1ef0f2ac9b73cf
+  version: 0.0.6
+  url: https://files.pythonhosted.org/packages/2f/40/acd90e2082bc648646d44116cc232e4484a717ab3807a8cf89ee3fc0b246/llm_foundation-0.0.6-py3-none-any.whl
+  sha256: f3f905bf30d7bfb2daf9f7268b54e89016d22c182a1c8d2aca0b36b44d38bf81
   requires_dist:
+  - beautifulsoup4<5,>=4.12.3
   - build<2,>=1.2.1
   - coloredlogs<16,>=15.0.1
   - ipykernel<7,>=6.29.5
+  - langchain-community<0.3,>=0.2.12
   - langchain-openai<0.2,>=0.1.22
+  - langgraph<0.3,>=0.2.12
   - loadenv<0.2,>=0.1.1
   - openai<2,>=1.42.0
   - pydantic<3,>=2.8.2
@@ -3978,6 +4037,12 @@ packages:
   url: https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl
   sha256: 2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2
   requires_python: '>=3.7'
+- kind: pypi
+  name: soupsieve
+  version: '2.6'
+  url: https://files.pythonhosted.org/packages/d1/c2/fe97d779f3ef3b15f05c94a2f1e3d21732574ed441687474db9d342a7315/soupsieve-2.6-py3-none-any.whl
+  sha256: e72c4ff06e4fb6e4b5a9f0f55fe6e81514581fca1515028625d0f299c602ccc9
+  requires_python: '>=3.8'
 - kind: pypi
   name: sqlalchemy
   version: 2.0.30

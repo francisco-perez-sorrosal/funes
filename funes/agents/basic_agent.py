@@ -1,3 +1,4 @@
+import json
 import operator
 import os
 import re
@@ -10,7 +11,7 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_huggingface.llms.huggingface_endpoint import HuggingFaceEndpoint
 from langgraph.checkpoint.sqlite import SqliteSaver
-from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, ToolMessage, AIMessage
+from langchain_core.messages import AnyMessage, BaseMessage, SystemMessage, HumanMessage, ToolMessage, AIMessage
 from langchain_core.tools import BaseTool, tool
 from langchain_core.callbacks.manager import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langgraph.graph import StateGraph, END
@@ -20,8 +21,11 @@ from langgraph.prebuilt import ToolInvocation, ToolExecutor
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated, TypedDict
 import sqlite3
-import instructor
-from openai import OpenAI
+
+from llm_foundation import logger
+from llm_foundation.routing import ToolMaster
+from llm_foundation.utils import banner, show_banner
+
 
 @tool
 def calculate(math_exp):
@@ -138,14 +142,29 @@ class CandidateResponseValidator(BaseModel):
     validation: bool
 
 
-# class Suggestions(TypedDict):
-#     """Suggestions to the plan."""
-#     elems: Annotated[List[str], ..., "List of suggestions to improve the plan."]
+class DoggieToolMaster(ToolMaster):
+    
+    @banner(text="Doggie Post Call Tool", level=2, mark_fn_end=False)
+    def post_call_tool(self, state, responses):
+        tool_messages = []
+        evidences = []
+        for response in responses:
+            tool_call_id, tool_name, response = response
+            tool_message = ToolMessage(
+                content=str(response), name=tool_name, tool_call_id=tool_call_id
+            )
+            tool_messages.append(tool_message)
+            evidences.append(response)
 
+        return {
+            "last_node": "call_tools",
+            "messages": tool_messages,  # We return a list, because this will get added to the existing list of messages
+            "evidences": state["evidences"] + evidences,
+        }
 
 class AgentState(TypedDict):
     task: str
-    lnode: str
+    last_node: str
     plan: str
     plan_approved: bool
     suggestions: List[str]
@@ -156,6 +175,33 @@ class AgentState(TypedDict):
     evidences: List[str]
     candidate_response: str
     final_response: str
+    
+def _show_state_messages(messages: List[BaseMessage], as_text:bool = False):
+    message_objects = {}
+    for i, message in enumerate(messages):
+        message_id = f"message_{i}"
+        message_objects[message_id] = message.content
+    if as_text:
+        return pprint.pprint(message_objects, indent=2)
+    return json.dumps(message_objects)
+
+def show_state(state: AgentState, as_text:bool = False):
+    json_state = json.dumps({
+        "plan": state['plan'],
+        "plan_approved": state['plan_approved'],
+        "suggestions": state['suggestions'],
+        "max_plan_revisions": state['max_plan_revisions'],
+        "revision_number": state['revision_number'],
+        "count": state['count'],
+        "messages": _show_state_messages(state['messages'], as_text),
+        "evidences": state['evidences'],
+        "candidate_response": state['candidate_response'],
+        "final_response": state['final_response']
+    })
+    if as_text:
+        return pprint.pprint(state, indent=2)
+    return json_state
+
 
 class DoggieMultiAgent():
 
@@ -164,7 +210,7 @@ class DoggieMultiAgent():
         self.name = name
         self.model = lm
         self.model = self.model.bind_tools(langchain_tools)
-        self.tool_executor = ToolExecutor(langchain_tools)
+        self.tool_master = DoggieToolMaster(langchain_tools)
   
         
         self.PLAN_PROMPT = """
@@ -173,9 +219,17 @@ class DoggieMultiAgent():
         using that knowledge manage to answer any user task of that topic. \
         Avoid any step for which you don't have a clear idea and avoid ask the user for clarification. \
         Think step by step. \
+        
+        Use the following format: \
+        Question: the task below. \
+        Thought: you should always think about what to do, do not use any tool if it is not needed. \
+        Don't try to execute any step of the plan.\
+        Plan: the depicted plan steps. \
+        
         Utilize the suggestions below as needed to improve the plan: \
         {suggestions} \
-        Just respond with the plan steps. \
+            
+        Always respond with a list of plan steps, avoiding directly calling a tool to solve the problem. \
         User task: """.strip()
         
         self.PLAN_CRITIC_PROMPT = """
@@ -183,8 +237,8 @@ class DoggieMultiAgent():
         Return a list of critiques and suggestions for the user's plan submission. \
         The list will contain straight to the point recommendations on how to improve the plan, \
         like step clarification, decomposition in fine-grain steps, etc. \
-        Be straight to the point and don't overcomplicate steps. \
-        If the plan already seems reasonable just return a list of empty suggestions.""".strip()
+        Be straight to the point and don't overcomplicate steps if the plan is already neat. \
+        So if the plan is reasonable, just return a list of empty suggestions.""".strip()
         
         self.PLAN_EXECUTOR_PROMPT = """
         You are a plan executor tasked with finding the response to a user question following a plan. \
@@ -206,7 +260,7 @@ class DoggieMultiAgent():
         builder.add_node("planner", self.plan_node)
         builder.add_node("planner_critic", self.plan_critic)
         builder.add_node("plan_executor", self.plan_executor_node)
-        builder.add_node("action", self.call_tool)
+        builder.add_node("action", self.tool_master.agentic_tool_call)
         builder.add_node("response_validator", self.response_validator)
         
         # Define edges
@@ -251,31 +305,32 @@ class DoggieMultiAgent():
             checkpointer=memory,
             interrupt_after=['planner', "planner_critic"] # 'generate', 'reflect', 'research_plan', 'research_critique']
         )
-
         
+
+    @banner(text="Plan Node")
     def plan_node(self, state: AgentState):
-        pprint.pprint("-------------- Plan Node ---------------")
+        logger.info(f"Current state:\n{show_state(state, as_text=True)}")
         possible_suggestions = "\n\n".join(state['suggestions'] or [])
         plan = self.PLAN_PROMPT.format(suggestions=possible_suggestions)
-        pprint.pprint(f"Plan prompt:\n{plan} ")
-        pprint.pprint(f"{state['task']} ")
+        plan = " ".join(plan.strip().split())
+        logger.info(f"Plan prompt:\n{plan.strip()} ")
+        # logger.info(f"{state['task']} ")
         messages = [
             SystemMessage(content=plan), 
             HumanMessage(content=state['task'])
         ]
         response = self.model.invoke(messages)
-        pprint.pprint(f"Response:\n{response.content}")
-        pprint.pprint("-------------- End Plan Node ---------------")
+        logger.info(f"Depicted plan:\n{response}")
         return {"plan": response.content,
-                "lnode": "planner",
+                "last_node": "planner",
                 "revision_number": state.get("revision_number", 1) + 1,
                 "count": 1,
         }
 
+    @banner(text="Plan Critic Node")
     def plan_critic(self, state: AgentState):
-        
-        pprint.pprint("-------------- Plan Critic Node ---------------")        
-        pprint.pprint(state['plan'])
+        _show_state_messages(state["messages"], as_text=True)
+        logger.info(f"Current plan:\n{state['plan']}")
 
         #  Local coding the schema directly (fails in getting the array properly, gets a string instead)
         #
@@ -327,16 +382,18 @@ class DoggieMultiAgent():
         pprint.pprint(f"Response ({critic_response})")
         
         plan_approved = len(critic_response.elems) == 0
-        pprint.pprint(f"-------------- End Plan Critic Node (Approved: {plan_approved}) ---------------")
+        show_banner(f"Plan Approved: {plan_approved}", level=4)
         return {
             "plan_approved": plan_approved,
             "suggestions": critic_response.elems,
-            "lnode": "planner_critic",
+            "last_node": "planner_critic",
             "count": 1,
         }
 
+    @banner(text="Plan Executor Node")
     def plan_executor_node(self, state: AgentState):
-        print("-------------- Plan Executor Node ---------------")
+        _show_state_messages(state["messages"], as_text=True)
+        logger.info(f"Current plan:\n{state['plan']}")
         content = state['plan']
         evidences = "\n\n".join(state['evidences'] or [])
         messages = [
@@ -347,49 +404,19 @@ class DoggieMultiAgent():
                 content=f"Here is the task:\n\n{state['task']}"
             ),
             ]
-        print(f"Messages: {messages}")
+        logger.info(f"Messages: {messages}")
         response = self.model.invoke(messages)
-        print(f"Response: {response}")
-        print("-------------- End Plan Executor Node ---------------")
+        logger.info(f"Response: {response}")
         return {
             "messages": [response],
-            "lnode": "plan_executor",
+            "last_node": "plan_executor",
             "count": 1,
             "candidate_response": response.content if not response.tool_calls else "",
         }
-        
-    # Define the function to execute tools
-    def call_tool(self, state):
-        print("-------------- Call Tool ---------------")
-        messages = state["messages"]
-        # Based on the continue condition
-        # we know the last message involves a function call
-        last_message = messages[-1]
-        # We construct an ToolInvocation from the function_call
-        tool_call = last_message.tool_calls[0]
-        action = ToolInvocation(
-            tool=tool_call["name"],
-            tool_input=tool_call["args"],
-        )
-        # We call the tool_executor and get back a response
-        response = self.tool_executor.invoke(action)
-        print(f"Response: {response}")
-        # We use the response to create a ToolMessage
-        tool_message = ToolMessage(
-            content=str(response), name=action.tool, tool_call_id=tool_call["id"]
-        )
-        print(f"Tool Message: {tool_message}")
-        print("-------------- End Call Tool ---------------")
-        # We return a list, because this will get added to the existing list
-        return {
-            "lnode": "call_tool",
-            "messages": [tool_message],
-            "evidences": state["evidences"] + [response],
-        }
 
+    @banner(text="Response Validator Node")
     def response_validator(self, state):
-        print("-------------- Response Validator ---------------")
-        print(state)
+        logger.info(show_state(state, as_text=True))
         candidate_response = state["candidate_response"]
         messages = [
             SystemMessage(
@@ -403,21 +430,22 @@ class DoggieMultiAgent():
         response = self.model.with_structured_output(CandidateResponseValidator).invoke(messages)
         print(f"Validator response: {response}")
         return {
-            "lnode": "response_validator",
+            "last_node": "response_validator",
             'final_response': candidate_response if response.validation else "",
             'candidate_response': '',
         }
 
+    @banner(text="Should Refine Plan Decision Point", level=4)
     def should_refine_plan(self, state):
-        print("-------------- Should Refine Plan ---------------")
-        print(f"State: {state}")
+        logger.info(f"Current state:\n{show_state(state, as_text=True)}")
         if not state["plan_approved"] and state["revision_number"] < state["max_plan_revisions"]:
-            print(f"Refining plan! Plan Approved {state['plan_approved']} Revision Number {state['revision_number']}({state['max_plan_revisions']})")
+            show_banner(f"Refining plan! Plan Approved {state['plan_approved']} Revision Number {state['revision_number']} out of {state['max_plan_revisions']}")
             return "review"
+        show_banner(f"Continuing with Plan Executor! Plan Approved {state['plan_approved']} Revision Number {state['revision_number']} out of {state['max_plan_revisions']}")
         return "plan_executor"
     
+    @banner(text="Should Continue Plan Decision Point", level=4)
     def should_continue(self, state):
-        print("-------------- Should Continue ---------------")
         print(f"State: {state}")
         messages = state["messages"]
         print(f"Messages: {messages}")
@@ -427,16 +455,16 @@ class DoggieMultiAgent():
         
         if not last_message.tool_calls:
             if state['candidate_response'] != "":
-                print("----- No function call, but candidate response -----")
+                show_banner("No function call, but candidate response", level=3)
                 return "response_validation"
-            print("----- No function call, finishing -----")
+            show_banner("No function call, finishing", level=3)
             return END
         else:
-            print("----- Function call, reexecuting -----")
+            show_banner("Function call, reexecuting", level=3)
             return "reexecute_tool"
 
+    @banner(text="Should Accept Response Decision Point", level=4)
     def should_accept_response(self, state):
         resp = "no" if state['final_response'] == "" else "yes"
         print(f"-------------- Should Accept Response ({resp}) ---------------")
         return resp
-        

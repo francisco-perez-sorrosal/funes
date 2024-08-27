@@ -3,7 +3,7 @@ from collections.abc import Generator
 from enum import Enum
 from typing import Any, Optional, Tuple, Union
 from pydantic import BaseModel
-
+from langgraph.errors import GraphRecursionError
 
 class RunnerStateType(int, Enum):
     ITER = 0
@@ -84,12 +84,12 @@ class AgentRunner():
             thread_config = current_thread.config
         
         current_state = self.agent.graph.get_state(thread_config)
-        lnode = current_state.values["lnode"]
+        last_node = current_state.values["last_node"]
         acount = current_state.values["count"]
         rev = current_state.values["revision_number"]
         nnode = current_state.next
-        # print(lnode,nnode,self.thread_id,rev,acount)
-        return lnode, nnode, current_thread.id if current_thread else -1, rev,acount
+        # print(last_node,nnode,self.thread_id,rev,acount)
+        return last_node, nnode, current_thread.id if current_thread else -1, rev,acount
 
 
     def get_agent_state(self, key):
@@ -107,8 +107,8 @@ class AgentRunner():
         print(f"Type current_values: {type(current_values)}")
         print(f"Getting agent state for key: {key} Current values: {current_values.values}")
         if key in current_values.values:
-            lnode, nnode, thread_id, rev, astep = self.get_display_state()
-            new_label = f"last_node: {lnode}, thread_id: {thread_id}, rev: {rev}, step: {astep}"
+            last_node, nnode, thread_id, rev, astep = self.get_display_state()
+            new_label = f"last_node: {last_node}, thread_id: {thread_id}, rev: {rev}, step: {astep}"
             return new_label, current_values.values[key]
         else:
             return "", None
@@ -160,7 +160,7 @@ class AgentRunner():
         if current_thread is None:
             initial_agent_state = {
                 'task': topic, 
-                'lnode': "", 
+                'last_node': "", 
                 'planner': "no plan",
                 'revision_number': 0,
                 'max_plan_revisions': max_plan_revisions,
@@ -181,11 +181,17 @@ class AgentRunner():
             else:
                 next_state = current_thread.get_agent_state()
             print(f"Invoking graph with state: {next_state}")
-            self.response = self.agent.graph.invoke(next_state, current_thread.config)
-            current_thread.inc_iterations()
-            self.partial_message += str(self.response)
-            self.partial_message += f"\n------------------\n\n"
-            lnode, nnode, _, rev, acount = self.get_display_state()
+            try:
+                self.response = self.agent.graph.invoke(next_state, current_thread.config)
+                current_thread.inc_iterations()
+                self.partial_message += str(self.response)
+                self.partial_message += f"\n------------------\n\n"
+                last_node, nnode, _, rev, acount = self.get_display_state()
+            except GraphRecursionError as e:
+                print(f"Error running agent: {e.message}")
+                print("Exiting loop...")
+                yield RunnerState(type=RunnerStateType.MAX_ITERS)
+                
             
             
             # print(f"After yield")
@@ -193,15 +199,15 @@ class AgentRunner():
             if not nnode:  
                 print("Hit the end")
                 yield RunnerState(type=RunnerStateType.END)
-            elif lnode in stop_after:
-                print(f"stopping due to stop_after {lnode} -> {stop_after}")
+            elif last_node in stop_after:
+                print(f"stopping due to stop_after {last_node} -> {stop_after}")
                 yield RunnerState(type=RunnerStateType.STOP)
             else:
-                print(f"Not stopping on lnode {lnode} ")
-                print(f"thread_id: {self.thread_id_counter},last_node: {lnode}, next_node: {nnode}, rev: {rev}, acount: {acount}")
+                print(f"Not stopping on last_node {last_node} ")
+                print(f"thread_id: {self.thread_id_counter},last_node: {last_node}, next_node: {nnode}, rev: {rev}, acount: {acount}")
                 yield RunnerState(type=RunnerStateType.ITER,
                                 thread_id=self.thread_id_counter, 
-                                last_node=lnode, 
+                                last_node=last_node, 
                                 next_node=nnode if len(nnode) != 0 else None, 
                                 message=self.partial_message, 
                                 rev=rev, 
