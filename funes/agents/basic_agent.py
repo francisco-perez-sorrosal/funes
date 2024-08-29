@@ -1,22 +1,17 @@
 import json
+import functools
 import operator
 import os
 import re
 import pprint
-
 from enum import Enum
 from typing import Any, Dict, List, TypedDict, Annotated, Optional, Type
-from langchain_huggingface import ChatHuggingFace
-from langchain_ollama import ChatOllama
-from langchain_openai import ChatOpenAI
-from langchain_huggingface.llms.huggingface_endpoint import HuggingFaceEndpoint
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langchain_core.messages import AnyMessage, BaseMessage, SystemMessage, HumanMessage, ToolMessage, AIMessage
-from langchain_core.tools import BaseTool, tool
-from langchain_core.callbacks.manager import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
+from langgraph.errors import GraphRecursionError
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolInvocation, ToolExecutor
+from langchain.prompts import ChatPromptTemplate
 # from langchain_core.pydantic_v1 import BaseModel, Field
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated, TypedDict
@@ -25,106 +20,17 @@ import sqlite3
 from llm_foundation import logger
 from llm_foundation.routing import ToolMaster
 from llm_foundation.utils import banner, show_banner
-
-
-@tool
-def calculate(math_exp):
-    """Performs arithmetic calculations of the mathematical expression math_exp.
-
-    Args:
-        math_exp: mathematical expression to be evaluated
-    """    
-    return eval(math_exp)
-
-@tool
-def average_dog_weight(breed_name):
-    """Returns the average weight of a dog breed.
-
-    Args:
-        breed_name: the name of the dog breed
-    """
-    match breed_name.lower():
-        case "scottish terrier": 
-            return("Scottish Terriers average 20 lbs")
-        case "border collie":
-            return("a Border Collies average weight is 37 lbs")
-        case "toy poodle":
-            return("a toy poodle average weight is 7 lbs")
-        case _:
-            return("An average dog weights 50 lbs")
-
-
-class MathExp(BaseModel):
-    math_exp: Optional[str] = Field(description="mathematical expression")
-
-class Calculator(BaseTool):
-    
-    name = "calculate"
-    description: str = (
-        "Performs arithmetic calculations of the mathematical expression math_exp. "
-        "Input args is a mathematical expresion to be evaluated."
-    )
-    args_schema: Type[BaseModel] = MathExp
-    return_direct: bool = True
-
-    def _run(
-        self, math_exp, run_manager: Optional[CallbackManagerForToolRun] = None
-    ) -> Any:
-        """Used to evaluate mathematical expresions."""
-        try:
-            result = eval(math_exp)
-        except:
-            result = "Invalid calculation for expresion {}".format(math_exp)
-        return result
-
-    async def _arun(
-        self, math_exp, run_manager: Optional[AsyncCallbackManagerForToolRun] = None
-    ) -> str:
-        """Use the tool asynchronously."""
-        raise NotImplementedError("custom_search does not support async")
-
-
-class DogBreed(BaseModel):
-    breed_name: Optional[str] = Field(description="breed_name")
-
-class DogBreedWeighter(BaseTool):
-    
-    name = "average_dog_weight"
-    description: str = (
-        "Returns the average weight of a dog breed. "
-        "Input args is a breed_name representing the name of the dog breed."
-    )
-    args_schema: Type[BaseModel] = DogBreed
-    return_direct: bool = True
-
-    def _run(
-        self, breed_name, run_manager: Optional[CallbackManagerForToolRun] = None
-    ) -> Any:
-        breed_name = breed_name.lower().strip()
-        """Used to return the weight of a dog breed."""
-        if breed_name in "scottish terrier": 
-            return("a Scottish Terrier average 20 lbs")
-        elif breed_name in "border collie":
-            return("a Border Collie average weight is 37 lbs")
-        elif breed_name in "toy poodle":
-            return("a toy poodles average weight is 7 lbs")
-        else:
-            return("An average dog weights 50 lbs")
-
-    async def _arun(
-        self, breed_name, run_manager: Optional[AsyncCallbackManagerForToolRun] = None
-    ) -> str:
-        """Use the tool asynchronously."""
-        raise NotImplementedError("custom_search does not support async")
-
+from llm_foundation.extractors import PlanExtractor, Plan, MultiTreePlan
+from funes.agents.tools import Calculator, DogBreedWeighter, DoggieToolMaster, calculate, average_dog_weight
+from funes.agents.worker_agent import WorkerAgent, WorkerAgentState
 
 TOOLS = {
-    "calculate": calculate,
+    "calculator": calculate,
     "average_dog_weight": average_dog_weight
 }
 
-langchain_tools = [calculate, average_dog_weight]
-# langchain_tools = [Calculator(), DogBreedWeighter()]
+# langchain_tools = [calculate, average_dog_weight]
+langchain_tools = [Calculator(), DogBreedWeighter()]
 
 
 class Role(str, Enum):
@@ -141,26 +47,6 @@ class CandidateResponseValidator(BaseModel):
     """Validation for a candidate response."""
     validation: bool
 
-
-class DoggieToolMaster(ToolMaster):
-    
-    @banner(text="Doggie Post Call Tool", level=2, mark_fn_end=False)
-    def post_call_tool(self, state, responses):
-        tool_messages = []
-        evidences = []
-        for response in responses:
-            tool_call_id, tool_name, response = response
-            tool_message = ToolMessage(
-                content=str(response), name=tool_name, tool_call_id=tool_call_id
-            )
-            tool_messages.append(tool_message)
-            evidences.append(response)
-
-        return {
-            "last_node": "call_tools",
-            "messages": tool_messages,  # We return a list, because this will get added to the existing list of messages
-            "evidences": state["evidences"] + evidences,
-        }
 
 class AgentState(TypedDict):
     task: str
@@ -209,6 +95,9 @@ class DoggieMultiAgent():
         
         self.name = name
         self.model = lm
+        logger.info("Adding Plan Extractor to the model")
+        self.plan_extractor_tool = PlanExtractor.build_tool(lm, Plan, use_pydantic_output=True)
+        langchain_tools.append(self.plan_extractor_tool)
         self.model = self.model.bind_tools(langchain_tools)
         self.tool_master = DoggieToolMaster(langchain_tools)
   
@@ -224,7 +113,7 @@ class DoggieMultiAgent():
         Question: the task below. \
         Thought: you should always think about what to do, do not use any tool if it is not needed. \
         Don't try to execute any step of the plan.\
-        Plan: the depicted plan steps. \
+        Plan: the depicted plan steps. Group all the logic substeps related to the same step together. \
         
         Utilize the suggestions below as needed to improve the plan: \
         {suggestions} \
@@ -260,7 +149,7 @@ class DoggieMultiAgent():
         builder.add_node("planner", self.plan_node)
         builder.add_node("planner_critic", self.plan_critic)
         builder.add_node("plan_executor", self.plan_executor_node)
-        builder.add_node("action", self.tool_master.agentic_tool_call)
+        # builder.add_node("action", self.tool_master.agentic_tool_call)
         builder.add_node("response_validator", self.response_validator)
         
         # Define edges
@@ -274,15 +163,16 @@ class DoggieMultiAgent():
             }
         )
         
-        builder.add_conditional_edges(
-            "plan_executor", 
-            self.should_continue, 
-            {
-                "response_validation": "response_validator",
-                "reexecute_tool": "action",
-                END: END, 
-            }
-        )
+        builder.add_edge("plan_executor", "response_validator")
+        # builder.add_conditional_edges(
+        #     "plan_executor", 
+        #     self.should_continue, 
+        #     {
+        #         "response_validation": "response_validator",
+        #         "reexecute_tool": "action",
+        #         END: END, 
+        #     }
+        # )
 
         builder.add_conditional_edges(
             "response_validator", 
@@ -292,10 +182,8 @@ class DoggieMultiAgent():
                 "yes": END,
             }
         )
-
         
-        builder.add_edge("action", "plan_executor")
-
+        # builder.add_edge("action", "plan_executor")
         
         # Entry point for the workflow
         builder.set_entry_point("planner")
@@ -332,49 +220,6 @@ class DoggieMultiAgent():
         _show_state_messages(state["messages"], as_text=True)
         logger.info(f"Current plan:\n{state['plan']}")
 
-        #  Local coding the schema directly (fails in getting the array properly, gets a string instead)
-        #
-        # suggestions_json_schema = {
-        #     "title": "suggestions",
-        #     "description": "Suggestions from the planner reviewer.",
-        #     "type": "object",
-        #     "properties": {
-        #         "suggestions": {
-        #             "type": "array",
-        #             "description": "The list of strings, each one being a suggestion",
-        #         },
-        #     },
-        #     "required": ["suggestions",],
-        # }        
-        # critic_response = self.model.with_structured_output(suggestions_json_schema).invoke([
-        #     SystemMessage(content=self.PLAN_CRITIC_PROMPT),
-        #     HumanMessage(content=state['plan'])
-        # ])
-        
-        # Coding opeanai schema
-        #        
-        # client = instructor.from_openai(
-        #     OpenAI(
-        #         base_url="http://localhost:11434/v1",
-        #         api_key="ollama",  # required, but unused
-        #     ),
-        #     mode=instructor.Mode.JSON,
-        # )
-        # critic_response = client.chat.completions.create(
-        #     model="llama3.1",
-        #     messages=[
-        #         {
-        #             "role": "system",
-        #             "content": self.PLAN_CRITIC_PROMPT,
-        #         },
-        #         {
-        #             "role": "user",
-        #             "content": state['plan'],
-        #         },                
-        #     ],
-        #     response_model=Suggestions,
-        # )
-
         critic_response = self.model.with_structured_output(Suggestions).invoke([
             SystemMessage(content=self.PLAN_CRITIC_PROMPT),
             HumanMessage(content=state['plan'])
@@ -393,25 +238,76 @@ class DoggieMultiAgent():
     @banner(text="Plan Executor Node")
     def plan_executor_node(self, state: AgentState):
         _show_state_messages(state["messages"], as_text=True)
-        logger.info(f"Current plan:\n{state['plan']}")
-        content = state['plan']
-        evidences = "\n\n".join(state['evidences'] or [])
-        messages = [
-            SystemMessage(
-                content=self.PLAN_EXECUTOR_PROMPT.format(content=content, evidences=evidences)
-            ),
-            HumanMessage(
-                content=f"Here is the task:\n\n{state['task']}"
-            ),
-            ]
-        logger.info(f"Messages: {messages}")
-        response = self.model.invoke(messages)
-        logger.info(f"Response: {response}")
+        current_plan = state['plan']
+        logger.info(f"Current plan:\n{current_plan}")
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "You are skilled decision maker and plan extractor able to identify hierarchical complex plan steps in plain text."),
+            ("user", "Extract the plan from the following text: {input}"),
+        ])        
+        logger.info("++++++++++++++++++++++++++++++++++")        
+        chain = prompt | self.model | self.tool_master
+        chain_response = chain.invoke({'input': current_plan})
+        plan = chain_response[0][2]
+        for i, step in enumerate(plan.plan):
+            logger.info(f"Plan Step {i}: {step}\n")
+            
+        multi_tree_plan = PlanExtractor.build_multi_tree_plan(plan)
+        
+        logger.info(multi_tree_plan.print_multi_tree())
+                
+        leaf_sorted_plan = multi_tree_plan.traverse_leafs_first_dependants()        
+        show_banner(f"Leaf sorted plan:\n{leaf_sorted_plan}", level=4)
+        
+        from langchain_core.runnables import RunnableConfig
+        
+        collective_evidences: Dict[str, list] = {}
+        candidate_respoonses = []
+        for step in leaf_sorted_plan:
+            configurable = {
+                    "thread_id": f"worker_thr_{step.id}",
+            }
+            worker_agent_config = RunnableConfig(recursion_limit=3, configurable=configurable)
+            worker_agent = WorkerAgent(self.model, f"Worker_{step.id}")
+            initial_agent_state = {
+                'task': step,
+                'response': '',
+    
+            }
+            logger.warning(f"Invoking graph with state: {initial_agent_state}")
+            try:
+                dependent_evidences = []
+                if step.is_root() or (step.is_root() and step.is_leaf()):
+                    show_banner(f"Delegating root step {step.id} on Working Agent: {step.description}", level=2)
+                    for s in step.depending_steps:
+                        dependent_evidences.append(collective_evidences[s.id])                        
+                else:
+                    if step.is_leaf():
+                        show_banner(f"Delegating leaf step {step.id} on Working Agent: {step.description}", level=2)
+                    else:
+                        show_banner(f"Delegating intermediate step {step.id} on Working Agent: {step.description}", level=2)
+                        for s in step.depending_steps:
+                            dependent_evidences.append(collective_evidences[s.id])
+
+                logger.info(f"Dependent evidences: {dependent_evidences}")
+                initial_agent_state['evidences'] = dependent_evidences
+                response = worker_agent.graph.invoke(initial_agent_state, worker_agent_config)
+                collective_evidences[step.id] = response['response']
+                if step.is_root() or (step.is_root() and step.is_leaf()):
+                    candidate_respoonses.append(response["response"])
+                
+            except GraphRecursionError as e:
+                logger.warning(f"Step {step.id} graph recursion error: {e}")
+                response = None
+                
+        final_response = " ".join(candidate_respoonses)
+        logger.info(f"Worker agent response: {final_response}")
+
         return {
             "messages": [response],
             "last_node": "plan_executor",
             "count": 1,
-            "candidate_response": response.content if not response.tool_calls else "",
+            "candidate_response": AIMessage(final_response),
         }
 
     @banner(text="Response Validator Node")
@@ -435,36 +331,37 @@ class DoggieMultiAgent():
             'candidate_response': '',
         }
 
+    # Decision points
     @banner(text="Should Refine Plan Decision Point", level=4)
     def should_refine_plan(self, state):
         logger.info(f"Current state:\n{show_state(state, as_text=True)}")
+        logger.info(f"Plan Approved {state['plan_approved']} Rev.# {state['revision_number']} / {state['max_plan_revisions']}")
         if not state["plan_approved"] and state["revision_number"] < state["max_plan_revisions"]:
-            show_banner(f"Refining plan! Plan Approved {state['plan_approved']} Revision Number {state['revision_number']} out of {state['max_plan_revisions']}")
+            show_banner(f"DECISION: Refine plan!", level=4) 
             return "review"
-        show_banner(f"Continuing with Plan Executor! Plan Approved {state['plan_approved']} Revision Number {state['revision_number']} out of {state['max_plan_revisions']}")
+        show_banner(f"DECISION: Continuing with Plan Executor!", level=4)
         return "plan_executor"
     
     @banner(text="Should Continue Plan Decision Point", level=4)
     def should_continue(self, state):
-        print(f"State: {state}")
+        logger.info(f"Current state:\n{show_state(state, as_text=True)}")
         messages = state["messages"]
-        print(f"Messages: {messages}")
         last_message = messages[-1]
-        print(f"-----Last Message: {last_message}----")
-        # If there is no function call, then we finish
-        
+        logger.debug(f"-----Last Message-----\n{last_message}")
+        # If there is no function call, then we finish        
         if not last_message.tool_calls:
             if state['candidate_response'] != "":
-                show_banner("No function call, but candidate response", level=3)
+                show_banner(f"DECISION: No function call, but candidate response!", level=4)                
                 return "response_validation"
-            show_banner("No function call, finishing", level=3)
+            show_banner(f"DECISION: No function call, finishing!", level=4)
             return END
         else:
-            show_banner("Function call, reexecuting", level=3)
+            show_banner(f"DECISION: Function call, re-executing!", level=4)
             return "reexecute_tool"
 
     @banner(text="Should Accept Response Decision Point", level=4)
     def should_accept_response(self, state):
+        logger.info(f"Current state:\n{show_state(state, as_text=True)}")
         resp = "no" if state['final_response'] == "" else "yes"
-        print(f"-------------- Should Accept Response ({resp}) ---------------")
+        show_banner(f"DECISION: Should Accept Response ({resp})", level=4)
         return resp

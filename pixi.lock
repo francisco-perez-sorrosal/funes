@@ -167,7 +167,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/8b/61/19b2c74d2b5fb0f7d8a97bb2d37f457b15c8cf14aca2523e97943ab003fc/langgraph_checkpoint_sqlite-1.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/11/4f/1d89e18d542b4545787a806dd8b485b5178781cd6c99e7c79285fd862a34/langsmith-0.1.82-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/9c/eef7c591e6dc952f3636cfe0df712c0f9916cedf317810a3bb53ccb65cdd/lark-1.1.9-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/2f/40/acd90e2082bc648646d44116cc232e4484a717ab3807a8cf89ee3fc0b246/llm_foundation-0.0.6-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/34/34/86ab15cad6dc74cd20500276697c0d36d66caf2fba99912a4a1be9688a47/llm_foundation-0.0.8-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2b/01/764489e364948f52aa7cb958a91a8dafd489357d2401f66946542bbc1764/llvmlite-0.42.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/2d/fd/e21d1f0608da7696746c5d4cdf2f944d714daf63a97def416e0f3c154f98/lm_format_enforcer-0.10.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/d0/ba/e29b2a5d12d5fad9c037ad7d5c3dffb22864d6511310bffa414c56408995/loadenv-0.1.1-py3-none-any.whl
@@ -2595,9 +2595,9 @@ packages:
   timestamp: 1716874187109
 - kind: pypi
   name: llm-foundation
-  version: 0.0.6
-  url: https://files.pythonhosted.org/packages/2f/40/acd90e2082bc648646d44116cc232e4484a717ab3807a8cf89ee3fc0b246/llm_foundation-0.0.6-py3-none-any.whl
-  sha256: f3f905bf30d7bfb2daf9f7268b54e89016d22c182a1c8d2aca0b36b44d38bf81
+  version: 0.0.8
+  url: https://files.pythonhosted.org/packages/34/34/86ab15cad6dc74cd20500276697c0d36d66caf2fba99912a4a1be9688a47/llm_foundation-0.0.8-py3-none-any.whl
+  sha256: ceb61caedf2033dca07dfd21b610856fdf0fade3ed803c344b85fb6ab2ee3161
   requires_dist:
   - beautifulsoup4<5,>=4.12.3
   - build<2,>=1.2.1

@@ -180,7 +180,7 @@ with agent_tab:
 
     stop_after = st.multiselect("Stop after", ["planner", "planner_critic"])
     max_plan_revisions = st.number_input("Max plan revisions", value=3)
-    user_prompt = st.text_area("Question", value="How much does a toy poodle weight?")
+    user_prompt = st.text_area("Question", value="How much does a toy poodle and a scottish terrier weight combined?")
     final_resp = st.session_state.get("final_response", None)
     if final_resp is not None and final_resp != "":
         st.success(st.session_state["final_response"])

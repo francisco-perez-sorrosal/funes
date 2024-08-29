@@ -182,6 +182,10 @@ class AgentRunner():
                 next_state = current_thread.get_agent_state()
             print(f"Invoking graph with state: {next_state}")
             try:
+                print("____________________")
+                print(next_state)
+                print(current_thread.config)
+                print("____________________")
                 self.response = self.agent.graph.invoke(next_state, current_thread.config)
                 current_thread.inc_iterations()
                 self.partial_message += str(self.response)
