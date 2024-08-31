@@ -7,16 +7,11 @@ from llm_foundation.basic_structs import Provider, LMConfig
 
 st.set_page_config(layout="wide")
 
-
-
-
 def page2():
     st.title("Second page")
 
 pg = st.navigation([
-    st.Page("autogen_ui.py", title="Autogen agent", icon="🔥"),
-    st.Page("basic_ui.py", title="Basic agent", icon="🔥"),
-    st.Page("retriever_ui.py", title="Agent loader", icon="🔥"),
+    st.Page("learner_agent_ui.py", title="Learner agent", icon="🔥"),
     st.Page(page2, title="Second page", icon=":material/favorite:"),
 ])
 
@@ -30,17 +25,19 @@ if lm is None:
         provider_as_enum = Provider[provider]
         models = get_model_catalog(provider_as_enum, ["gpt-4o"])
         model_options = [k for k in models.keys() if k.startswith(provider.lower())]
-        selected_model = st.selectbox("Select a model", model_options, index=0)
+        # selected_model = st.selectbox("Select a model", model_options, index=0)
+        selected_model = st.selectbox("Select a model", ['gpt-3.5-turbo', 'gpt-4'], index=0)
         model = models.get(selected_model, "")
-        if model == "":
-            st.warning("No model selected")
-            st.stop() 
-        
         select_btn = st.form_submit_button('Select LM')
+        # if model == "":
+        #     st.warning("No model selected")
+        #     st.stop() 
+        
         if select_btn:
-            lm_config = LMConfig(model=model, provider=provider_as_enum)
-            st.session_state["lm"] = get_lm(lm_config)
-            st.sidebar.info(f"LM selected:\n{lm}")
+            # lm_config = LMConfig(model=model, provider=provider_as_enum)            
+            # st.session_state["lm"] = get_lm(lm_config)
+            st.session_state["lm"] = selected_model
+            st.sidebar.info(f"LM selected:\n{st.session_state['lm']}")
             st.rerun()
         else:
             st.sidebar.warning(f"No LM selected")

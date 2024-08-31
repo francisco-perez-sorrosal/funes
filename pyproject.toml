@@ -19,9 +19,6 @@ funes = { path = ".", editable = true }
 
 [tool.pixi.tasks]
 funes = "python funes"
-test = "python funes/main_test.py"
-st = "python -m streamlit run ./funes/ui/app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false --server.port 8501"
-autogen = "python -m chainlit run -w --no-cache ./funes/ui/autogen_ui.py"
 
 [tool.pixi.dependencies]
 protobuf = "3.20.2.*"

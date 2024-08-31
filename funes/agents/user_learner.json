@@ -1,0 +1,9 @@
+{
+    "agent_type": "example_type",
+    "system_message": "This is a system message.",
+    "description": "This is a description of the agent.",
+    "code_execution_config": {
+        "timeout": 300,
+        "retry": 3
+    }
+}

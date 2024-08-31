@@ -1,0 +1,10 @@
+{
+    "name": "Francisco",
+    "roles": {
+        "learner": {
+            "description": "A highly motivated human that is eager to learn.",
+            "agent_system_message": "",
+            "autogen_code_execution_config": {}
+        }
+    }
+}

@@ -8,6 +8,8 @@ from typing import Annotated, Literal, Optional, Type
 
 from funes.io_types import BasePaper
 
+# Langchain tool call
+# https://github.com/microsoft/autogen/blob/main/notebook/agentchat_langchain.ipynb
 
 class SmalltalkInput(BaseModel):
     query: Optional[str] = Field(description="user query")

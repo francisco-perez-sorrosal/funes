@@ -1581,7 +1581,7 @@ packages:
   name: funes
   version: 0.1.0
   path: .
-  sha256: 0877b22e2114a020b7a2937450e086a9abb68e83e9d903f9be4d30989a326676
+  sha256: 98a9f64c5614fdcb23763876c94e70012e883fb0b8b9cbe87d5418406cb24f4a
   requires_dist:
   - rich
   - dspy-ai
