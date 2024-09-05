@@ -29,19 +29,19 @@ os.environ["OPEN_API_KEY"] = openai_api_key
 
 st.title("Agent")
 
-lm = st.session_state.get("lm")
-if not lm:
-    st.warning("No model selected")
-    st.stop()
+# lm = st.session_state.get("lm")
+# if not lm:
+#     st.warning("No model selected")
+#     st.stop()
 
 
-if not openai_api_key or not lm:
-    st.warning(
-        'You must provide valid OpenAI API key and choose preferred model', icon="⚠️")
-    st.stop()
+# if not openai_api_key or not lm:
+#     st.warning(
+#         'You must provide valid OpenAI API key and choose preferred model', icon="⚠️")
+#     st.stop()
 
 config_list = [{
-    "model": lm,  # model name
+    "model": 'gpt-4o-mini',  # model name
     "api_key": openai_api_key  # api key
 }]
 llm_config = {
@@ -93,8 +93,6 @@ with agent_tab:
 
         if "selected_question" not in st.session_state:
             st.session_state.selected_question = []
-
-
 
 
         questions = [
