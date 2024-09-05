@@ -1,15 +1,50 @@
 import json
 
-from typing import Dict, List, Literal, Optional
+from typing import Any, Callable, Dict, List, Literal, Optional, Union
 from enum import Enum
 
 import autogen
-from autogen.agentchat import Agent, GroupChat
+from autogen.agentchat import ConversableAgent, GroupChat
 from pydantic import BaseModel
 from pathlib import Path
 
 
 from llm_foundation import logger
+
+
+DEFAULT_TERMINATION_WORD="TERMINATE"
+
+def is_termination_message(msg, termination_word: str = DEFAULT_TERMINATION_WORD) -> bool:
+    '''Detects if we should terminate the conversation'''
+    
+    if isinstance(msg.get("content"), str):
+        return msg["content"].rstrip().endswith(termination_word)
+    elif isinstance(msg.get("content"), list):
+        for content in msg["content"]:
+            if isinstance(content, dict) and "text" in content:
+                return content["text"].rstrip().endswith(termination_word)
+    return False
+
+def always_terminate(msg) -> bool:
+    return True
+
+
+def custom_speaker_selection_func(last_speaker, groupchat):
+    """Define a customized speaker selection function.
+    A recommended way is to define a transition for each speaker in the groupchat.
+
+    Parameters:
+        - last_speaker: Agent
+            The last speaker in the group chat.
+        - groupchat: GroupChat
+            The GroupChat object
+    Return:
+        Return one of the following:
+        1. an `Agent` class, it must be one of the agents in the group chat.
+        2. a string from ['auto', 'manual', 'random', 'round_robin'] to select a default method to use.
+        3. None, which indicates the chat should be terminated.
+    """
+    pass
 
 
 class AutogenAgentType(Enum):
@@ -22,6 +57,7 @@ class AutogenAgentType(Enum):
 class Role(BaseModel):
     description: str
     agent_system_message: str
+    human_input_mode: Literal["ALWAYS", "NEVER", "TERMINATE"] = "TERMINATE"
     autogen_code_execution_config: dict = {}
 
     @classmethod
@@ -33,38 +69,57 @@ class Role(BaseModel):
     def to_autogen_agent(self, 
                          name:str, 
                          type: AutogenAgentType, 
-                         human_input_mode:Literal["ALWAYS", "NEVER", "TERMINATE"] = "NEVER",
+                         human_input_mode: Optional[Literal["ALWAYS", "NEVER", "TERMINATE"]] = None,
                          llm_config: Optional[dict] = None,
+                         max_consecutive_auto_reply: Optional[int] = None,
                          group_chat: Optional[GroupChat] = None,
-                         code_execution_config: Optional[dict] = None) -> 'Agent':
+                         code_execution_config: Optional[Union[Dict, Literal[False]]] = False,
+                         termination_function: Optional[Callable] = None) -> 'ConversableAgent':
         
         code_execution_config = code_execution_config if code_execution_config is not None else self.autogen_code_execution_config
         
+        if termination_function is not None:
+            termination_message_placeholder = lambda msg: termination_function(msg)
+        else:
+            termination_message_placeholder = None
+        
         match type:
-            case AutogenAgentType.AssistantAgent:
-                return autogen.AssistantAgent(name=name, 
-                                              system_message=self.agent_system_message, 
-                                              llm_config=llm_config,
-                                              human_input_mode=human_input_mode,
-                                              code_execution_config=code_execution_config
-                                              )
             case AutogenAgentType.ConversableAgent:
                 return autogen.ConversableAgent(name=name, 
                                                 system_message=self.agent_system_message,
-                                                code_execution_config=code_execution_config,
-                                                llm_config=llm_config)
+                                                description=self.description,
+                                                llm_config=llm_config,
+                                                human_input_mode=human_input_mode if human_input_mode is not None else self.human_input_mode,
+                                                max_consecutive_auto_reply=max_consecutive_auto_reply,
+                                                is_termination_msg=termination_message_placeholder,
+                                                code_execution_config=code_execution_config
+                )
+            case AutogenAgentType.AssistantAgent:
+                return autogen.AssistantAgent(name=name, 
+                                              system_message=self.agent_system_message, 
+                                              description=self.description,
+                                              llm_config=llm_config,
+                                              human_input_mode=human_input_mode if human_input_mode is not None else self.human_input_mode,
+                                              max_consecutive_auto_reply=max_consecutive_auto_reply,
+                                              is_termination_msg=termination_message_placeholder,
+                                              code_execution_config=code_execution_config,
+                )
             case AutogenAgentType.UserProxyAgent:
                 return autogen.UserProxyAgent(name=name, 
                                               system_message=self.agent_system_message, 
+                                              description=self.description,
                                               llm_config=llm_config,
+                                              human_input_mode=human_input_mode if human_input_mode is not None else self.human_input_mode,
+                                              max_consecutive_auto_reply=max_consecutive_auto_reply,
+                                              is_termination_msg=termination_message_placeholder,
                                               code_execution_config=code_execution_config,
-                                              human_input_mode="ALWAYS",)
+                )
             case AutogenAgentType.GroupChatManager:
                 if group_chat is None:
                     raise ValueError("Group chat is required for GroupChatManager")
                 return autogen.GroupChatManager(name=name, 
                                                 groupchat=group_chat,
-                                                )
+                )
             case _:
                 raise ValueError(f"Invalid agent type: {type}")
 
@@ -110,14 +165,16 @@ class Persona(BaseModel):
                               human_input_mode:Literal["ALWAYS", "NEVER", "TERMINATE"] = "NEVER",
                               llm_config: Optional[dict] = None,
                               group_chat: Optional[GroupChat] = None,
-                              code_execution_config: Optional[dict] = None) -> 'Agent':
+                              code_execution_config: Optional[Union[Dict, Literal[False]]] = False,
+                              termination_function: Optional[Callable] = None) -> 'ConversableAgent':
         
         return self.roles[role_name].to_autogen_agent(name=f"{self.name}_{role_name}", 
                                                        type=type, 
                                                        human_input_mode=human_input_mode,
                                                        llm_config=llm_config,
                                                        group_chat=group_chat,
-                                                       code_execution_config=code_execution_config)
+                                                       code_execution_config=code_execution_config,
+                                                       termination_function=termination_function)
 
     def __str__(self) -> str:
         def format_role(role_name: str, role: Role, indent: int) -> str:

@@ -1,0 +1,18 @@
+{
+    "name": "Johh_Carmack",
+    "roles": {
+        "sw_engineer": {
+            "description": "An resourceful software enginner.",
+            "agent_system_message": "Write code generating graphs/images based on the plan provided by the planner that help to complement the text response of the teacher. Save the resulting artifacts (images/graphs) when necessary in a file and insert the image as markdown in the text sent by the writer. The code should be written in Python and should be clear and concise. The code should be written in a way that it can be easily understood by a learner. Do not pass the code to an executor if it is not working or serves only to illustrative purposes.",
+            "human_input_mode": "NEVER",
+            "autogen_code_execution_config": {}
+        },
+        "code_executor": {
+            "description": "Execute the code written by the engineer and report the result.",
+            "agent_system_message": "",
+            "human_input_mode": "NEVER",
+            "autogen_code_execution_config": {}
+        }
+
+    }
+}

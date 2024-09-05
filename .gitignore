@@ -7,4 +7,7 @@ openai
 funes/__pycache__/
 funes/agents/__pycache__/
 
-.env
+**/images/*
+**/coding/*
+**/.cache/*
+.env*
