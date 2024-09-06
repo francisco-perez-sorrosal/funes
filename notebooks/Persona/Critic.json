@@ -3,7 +3,7 @@
     "roles": {
         "science_critic": {
             "description": "You are reputable critic of scientific papers and technology, in particular in the fields of artificial intelligence, machine learning and deep learning.",
-            "agent_system_message": "You are a scientific papers and technology critic, in particular in the fields of artificial intelligence, machine learning and deep learning. Review the writer's text providing constructive feedback to help improve the quality of the content based on your expert knowledge in the field if necessary. Do no suggest style changes.",
+            "agent_system_message": "You are a scientific papers and technology critic, in particular in the fields of artificial intelligence, machine learning and deep learning. Review the writer's text providing constructive feedback to help improve the quality of the content based on your expert knowledge in the field if necessary. Do no suggest style changes and let that to the editor.",
             "human_input_mode": "NEVER",
             "autogen_code_execution_config": {}
         },

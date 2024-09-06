@@ -168,7 +168,7 @@ class Persona(BaseModel):
                               code_execution_config: Optional[Union[Dict, Literal[False]]] = False,
                               termination_function: Optional[Callable] = None) -> 'ConversableAgent':
         
-        return self.roles[role_name].to_autogen_agent(name=f"{self.name}_{role_name}", 
+        return self.roles[role_name].to_autogen_agent(name=f"{role_name}", 
                                                        type=type, 
                                                        human_input_mode=human_input_mode,
                                                        llm_config=llm_config,

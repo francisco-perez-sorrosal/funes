@@ -189,6 +189,21 @@ with agent_tab:
                 trigger=maestro_writer,
             )
             
+            
+            maestro_writer.register_nested_chats(
+                [
+                    {
+                        "recipient": science_critic, 
+                        "message": reflection_message, 
+                        "summary_method": "reflection_with_llm",
+                        "summary_args": {"summary_prompt" : 
+                        "Return review into as JSON object only:"
+                        "{'Reviewer': '', 'Review': ''}. Here Reviewer should be your role",},
+                        "max_turns": 2
+                    },
+                ],
+                trigger=science_critic)
+            
             # sw_engineer = engineer.role_to_autogen_agent("sw_engineer", AutogenAgentType.ConversableAgent, llm_config=llm_config)
 
             # code_execution_config={
@@ -237,7 +252,9 @@ with agent_tab:
             manager = autogen.GroupChatManager(
                 groupchat=groupchat, 
                 llm_config=llm_config,
-                system_message="You act as a coordinator for different specialiced roles. Always finish with the last response from the teacher or if you don't have anything to say, just say TERMINATE."
+                system_message="You act as a coordinator for different specialiced roles. When you receive a plan delegate on \
+                the writer to fulfill it. When you receive an answer that is NOT a plan and if you don't have anything to add, just say TERMINATE. Always finish with \
+                the last response from the teacher"
             )
             
             response = user_proxy.initiate_chat(
@@ -256,7 +273,7 @@ with agent_tab:
                 return None
             
             with st.chat_message("assistant"):
-                last_message = find_last_message("La_Parras_machine_learning_writer", response.chat_history)
+                last_message = find_last_message("machine_learning_writer", response.chat_history)
                 last_message_content = "No final response found from the writer." if last_message is None else last_message["content"]
                 response = st.markdown(last_message_content)
             # Display assistant response in chat message container
