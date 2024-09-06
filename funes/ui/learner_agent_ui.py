@@ -3,6 +3,7 @@ from collections.abc import Generator
 from typing import Optional
 import streamlit as st
 import asyncio
+import matplotlib.pyplot as plt
 
 from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, ToolMessage
 
@@ -12,6 +13,8 @@ from IPython.display import Image, display
 
 from funes.agents.agent_types import AutogenAgentType, Persona, always_terminate
 from funes.agents.maestro_app import reflection_message
+
+from autogen.graph_utils import visualize_speaker_transitions_dict
 
 
 with open("langsmith", "r") as file:
@@ -174,11 +177,11 @@ with agent_tab:
                     "summary_args": {"summary_prompt" : 
                     "Return review into as JSON object only:"
                     "{'Reviewer': '', 'Review': ''}. Here Reviewer should be your role",},
-                    "max_turns": 1},    
+                    "max_turns": 2},    
                 {
                     "recipient": meta_reviewer, 
                     "message": "Aggregrate feedback from all reviewers and give final suggestions on the writing.",
-                    "max_turns": 1},
+                    "max_turns": 2},
             ]
 
             science_critic.register_nested_chats(
@@ -207,23 +210,28 @@ with agent_tab:
             user_proxy = francisco.role_to_autogen_agent("learner", AutogenAgentType.UserProxyAgent, llm_config=llm_config, termination_function=always_terminate)
             
             import autogen
+            
+            agent_speaker_transitions_dict = {
+                user_proxy: [planner],
+                planner: [maestro_writer, user_proxy],
+                maestro_writer: [science_critic, planner],
+                science_critic: [maestro_writer]
+                # user_proxy: [maestro_teacher, science_critic],
+                # maestro_teacher: [science_critic, sw_engineer],
+                # science_critic: [sw_engineer, maestro_teacher],
+                # sw_engineer: [executor, maestro_teacher],
+                # executor: [maestro_teacher]
+            }
+            
+            agent_crew = [user_proxy, planner, maestro_writer, science_critic] #, sw_engineer, executor],
+            
             groupchat = autogen.GroupChat(
-                agents=[user_proxy, planner, maestro_writer, science_critic], #, sw_engineer, executor],
+                agents = agent_crew,
                 messages=[],
                 max_round=10,
                 select_speaker_auto_verbose=True,
                 speaker_transitions_type="allowed",  # This has to be specified if the transitions below apply
-                allowed_or_disallowed_speaker_transitions={
-                    user_proxy: [planner],
-                    planner: [maestro_writer, user_proxy],
-                    maestro_writer: [science_critic, planner],
-                    science_critic: [maestro_writer]
-                    # user_proxy: [maestro_teacher, science_critic],
-                    # maestro_teacher: [science_critic, sw_engineer],
-                    # science_critic: [sw_engineer, maestro_teacher],
-                    # sw_engineer: [executor, maestro_teacher],
-                    # executor: [maestro_teacher]
-                },
+                allowed_or_disallowed_speaker_transitions=agent_speaker_transitions_dict,
             )
             
             manager = autogen.GroupChatManager(
@@ -253,6 +261,12 @@ with agent_tab:
                 response = st.markdown(last_message_content)
             # Display assistant response in chat message container
             st.session_state.messages.append({"role": "assistant", "content": response.summary})
+            
+            st.write("Display agent Crew")
+            fig = plt.figure(figsize=(8,8))
+            visualize_speaker_transitions_dict(agent_speaker_transitions_dict, agent_crew)
+            with st.sidebar:
+                st.pyplot(fig)
 
 
         default_chat_input_value = "Default Value"
