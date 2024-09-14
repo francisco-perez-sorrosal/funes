@@ -1,5 +1,11 @@
 import arxiv
-import json
+import nest_asyncio
+nest_asyncio.apply()
+
+from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
+from playwright_stealth import stealth_sync, stealth_async
+from bs4 import BeautifulSoup
 
 from langchain.tools import BaseTool, StructuredTool, tool
 from langchain_core.pydantic_v1 import BaseModel, Field
@@ -103,3 +109,93 @@ class ArxivDownloaderTool(BaseTool):
     ) -> str:
         """Use the tool asynchronously."""
         raise NotImplementedError("custom_search does not support async")
+
+
+class WebScraper:
+    def __init__(self, headless=True, browser_type="chromium", chunk_size=256, max_tokens=1000):
+        self.headless = headless
+        self.browser_type = browser_type
+        self.chunk_size = chunk_size
+        self.max_tokens = max_tokens
+
+    def scrape_page(self, url: str) -> str:
+        with sync_playwright() as p:
+            browser = getattr(p, self.browser_type).launch(
+                headless=self.headless,
+                args=["--disable-gpu", "--no-sandbox"]
+            )
+            context = browser.new_context()
+            page = context.new_page()
+
+            stealth_sync(page)
+            page.goto(url)
+
+            html_content = page.content()
+            browser.close()
+        return html_content
+
+
+    async def a_scrape_page(self, url: str) -> str:
+        # with sync_playwright() as p:
+        async with async_playwright() as p:
+            browser = await getattr(p, self.browser_type).launch(
+                headless=self.headless,
+                args=["--disable-gpu", "--no-sandbox"]
+            )
+            context = await browser.new_context()
+            page = await context.new_page()
+            await stealth_async(page)
+            await page.goto(url)
+
+            html_content = await page.content()
+            await browser.close()
+        return html_content
+
+    def extract_titles_articles_links(self, raw_html: str) -> list:
+        soup = BeautifulSoup(raw_html, 'html.parser')
+        extracted_data = []
+        visited_links = set()
+        for article in soup.find_all(['article', 'section', 'div']):
+            title_tag = article.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+            link_tag = article.find('a', href=True)
+            content = article.get_text(separator="\n", strip=True)
+            
+            if title_tag and link_tag and content and link_tag['href'] not in visited_links:
+                extracted_data.append({
+                    'title': title_tag.get_text(strip=True),
+                    'link': link_tag['href'],
+                    'content': content
+                })
+                visited_links.add(link_tag['href'])
+        
+        return extracted_data
+
+    def query_page_content(self, url: str) -> dict:
+        raw_html = self.scrape_page(url)
+        structured_data = {
+            "url": url,
+            "extracted_data": self.extract_titles_articles_links(raw_html),
+            "raw_html": raw_html
+        }
+        return structured_data
+
+
+    async def a_query_page_content(self, url: str) -> dict:
+        raw_html = await self.a_scrape_page(url)
+        structured_data = {
+            "url": url,
+            "extracted_data": self.extract_titles_articles_links(raw_html),
+            "raw_html": raw_html
+        }
+        return structured_data
+
+
+
+def query_web_scraper(url: str) -> dict:
+    scraper = WebScraper(headless=True)
+    return scraper.query_page_content(url)
+
+
+async def a_query_web_scraper(url: str) -> dict:
+    scraper = WebScraper(headless=True)
+    return await scraper.a_query_page_content(url)

@@ -12,6 +12,12 @@
             "agent_system_message": "You are a highly motivated teacher that will follow an received plan step by step to offer the best answers to a user task. You have flexibility to write the appropriate titles, sections and subsections, and you will write engaging and structured content for each of them or will improve your text in case you receive feedback from the critic, trying to not to loose any important piece of information from what you already wrote up to now. Be as extensive as you need with your answers. If a plan requires it, delegate on a software engineer to write some python code that complement your responses. You will only use markdown format to write the responses. When you add mathematical formulas, wrap them with $$ at the beginning and the end. After you reviewed the critics feedback and made the necessary changes a couple of times, just return TERMINATE.",
             "human_input_mode": "NEVER",
             "autogen_code_execution_config": {}
+        },
+        "bib_tex_writer": {
+            "description": "You are an expert writer of bibtex entries used in scientific papers written in latex.",
+            "agent_system_message": "You are an expert writer of bibtex entries used in scientific papers/books or other documents written in latex. Provided an structured information in JSON format about a document, build the bibtex entry out of it. If you think that there's information about more than one edition of the scientific paper or book, add the number of bibtex entries you consider. Perform the most adequate matching between the fields of the JSON structure and the final bibtex entry you will return. Jist return the bibtex entry in a string format.",
+            "human_input_mode": "NEVER",
+            "autogen_code_execution_config": {}
         }
     }
 }

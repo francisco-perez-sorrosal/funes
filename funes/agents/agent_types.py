@@ -3,8 +3,8 @@ import json
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 from enum import Enum
 
-import autogen
-from autogen.agentchat import ConversableAgent, GroupChat
+
+from autogen.agentchat import ConversableAgent, GroupChat, AssistantAgent, UserProxyAgent, GroupChatManager
 from pydantic import BaseModel
 from pathlib import Path
 
@@ -85,7 +85,7 @@ class Role(BaseModel):
         
         match type:
             case AutogenAgentType.ConversableAgent:
-                return autogen.ConversableAgent(name=name, 
+                return ConversableAgent(name=name, 
                                                 system_message=self.agent_system_message,
                                                 description=self.description,
                                                 llm_config=llm_config,
@@ -95,7 +95,7 @@ class Role(BaseModel):
                                                 code_execution_config=code_execution_config
                 )
             case AutogenAgentType.AssistantAgent:
-                return autogen.AssistantAgent(name=name, 
+                return AssistantAgent(name=name, 
                                               system_message=self.agent_system_message, 
                                               description=self.description,
                                               llm_config=llm_config,
@@ -105,7 +105,7 @@ class Role(BaseModel):
                                               code_execution_config=code_execution_config,
                 )
             case AutogenAgentType.UserProxyAgent:
-                return autogen.UserProxyAgent(name=name, 
+                return UserProxyAgent(name=name, 
                                               system_message=self.agent_system_message, 
                                               description=self.description,
                                               llm_config=llm_config,
@@ -117,7 +117,7 @@ class Role(BaseModel):
             case AutogenAgentType.GroupChatManager:
                 if group_chat is None:
                     raise ValueError("Group chat is required for GroupChatManager")
-                return autogen.GroupChatManager(name=name, 
+                return GroupChatManager(name=name, 
                                                 groupchat=group_chat,
                 )
             case _:
