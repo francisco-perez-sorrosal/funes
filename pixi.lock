@@ -200,6 +200,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/33/62/2c9085e571318d51212a6914566fe41dd0e33d7f268f7e2f23dcd3f06c56/multidict-6.0.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/35/a8/36d8d7b3e46b377800d8dec47891cdf05842d1a2366909ae4a0c89fbc5e6/multiprocess-0.70.15-py310-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2a/e2/5d3f6ada4297caebe1a2add3b126fe800c96f56dbe5d1988a2cbe0b267aa/mypy_extensions-1.0.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/ba/16/53e963b15cf08d62e521fe70feccc36e9a718617e483b0b132aeffd86072/neo4j-5.24.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a0/c4/c2971a3ba4c6103a3d10c4b0f24f461ddc027f0f09763220cf35ca1401b3/nest_asyncio-1.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/38/e9/5f72929373e1a0e8d142a130f3f97e6ff920070f87f91c4e13e40e0fba5a/networkx-3.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/6d/92/8d7aebd4430ab5ff65df2bfee6d5745f95c004284db2d8ca76dcbfd9de47/ninja-1.11.1.1-py2.py3-none-manylinux1_x86_64.manylinux_2_5_x86_64.whl
@@ -1575,7 +1576,7 @@ packages:
   name: funes
   version: 0.1.0
   path: .
-  sha256: 1704ef7325b7c7a44aa5bf65000f4025fe32d45e34e4282c7b5a58c2413a8ada
+  sha256: 2b05707ccd62a2fbfb4b4ce013cb937ed7a690730b76c6e759220848c5969af3
   requires_dist:
   - rich
   - dspy-ai
@@ -1608,6 +1609,7 @@ packages:
   - beautifulsoup4>=4.12.3,<5
   - nest-asyncio>=1.6.0,<2
   - playwright-stealth>=1.0.6,<2
+  - neo4j>=5.24.0,<6
   requires_python: '>=3.10,<3.11'
   editable: true
 - kind: conda
@@ -3168,6 +3170,18 @@ packages:
   purls: []
   size: 887465
   timestamp: 1715194722503
+- kind: pypi
+  name: neo4j
+  version: 5.24.0
+  url: https://files.pythonhosted.org/packages/ba/16/53e963b15cf08d62e521fe70feccc36e9a718617e483b0b132aeffd86072/neo4j-5.24.0-py3-none-any.whl
+  sha256: 5b4705cfe8130020f33e75e31ad3fcfe67ee958e07d0c3c4936e9c8245a1ea58
+  requires_dist:
+  - pytz
+  - numpy<2.0.0,>=1.7.0 ; extra == 'numpy'
+  - pandas<3.0.0,>=1.1.0 ; extra == 'pandas'
+  - numpy<2.0.0,>=1.7.0 ; extra == 'pandas'
+  - pyarrow>=1.0.0 ; extra == 'pyarrow'
+  requires_python: '>=3.7'
 - kind: pypi
   name: nest-asyncio
   version: 1.6.0

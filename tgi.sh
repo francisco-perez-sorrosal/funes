@@ -21,7 +21,7 @@ docker run --gpus all \
 	--shm-size 2g \
        	-p 8081:80 \
        	-v $volume:/data \
-	-e HUGGING_FACE_HUB_TOKEN=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 ghcr.io/huggingface/text-generation-inference:latest \
+	-e HUGGING_FACE_HUB_TOKEN=${HF_TOKEN} \
 	--model-id $model \
 	--num-shard $num_shard \
 	--max-batch-prefill-tokens=2122 \

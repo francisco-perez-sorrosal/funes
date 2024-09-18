@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Add a short description here"
 authors = [{name = "Francisco Perez-Sorrosal", email = "fperezsorrosal@gmail.com"}]
 requires-python = ">= 3.10,<3.11"
-dependencies = ["rich", "dspy-ai", "ipykernel", "vllm", "setuptools", "huggingface-hub[cli]", "streamlit", "langchain", "langchain-community", "text-generation", "arxiv", "langchainhub", "langchain-huggingface", "langgraph", "langchain-ollama", "instructor", "langchain-experimental", "openai", "langchain-openai", "llm-foundation>=0.0.6", "langgraph-checkpoint-sqlite>=1.0.0,<2", "pyautogen>=0.2.35,<0.3", "chainlit>=1.1.402,<2", "decouple>=0.0.7,<0.0.8", "matplotlib>=3.9.2,<4", "duckduckgo-search>=6.2.11,<7", "requests>=2.32.3,<3", "playwright>=1.46.0,<2", "beautifulsoup4>=4.12.3,<5", "nest-asyncio>=1.6.0,<2", "playwright-stealth>=1.0.6,<2"]
+dependencies = ["rich", "dspy-ai", "ipykernel", "vllm", "setuptools", "huggingface-hub[cli]", "streamlit", "langchain", "langchain-community", "text-generation", "arxiv", "langchainhub", "langchain-huggingface", "langgraph", "langchain-ollama", "instructor", "langchain-experimental", "openai", "langchain-openai", "llm-foundation>=0.0.6", "langgraph-checkpoint-sqlite>=1.0.0,<2", "pyautogen>=0.2.35,<0.3", "chainlit>=1.1.402,<2", "decouple>=0.0.7,<0.0.8", "matplotlib>=3.9.2,<4", "duckduckgo-search>=6.2.11,<7", "requests>=2.32.3,<3", "playwright>=1.46.0,<2", "beautifulsoup4>=4.12.3,<5", "nest-asyncio>=1.6.0,<2", "playwright-stealth>=1.0.6,<2", "neo4j>=5.24.0,<6"]
 
 [build-system]
 requires = ["setuptools"]

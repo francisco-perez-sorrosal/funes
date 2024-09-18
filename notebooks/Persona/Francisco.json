@@ -3,7 +3,7 @@
     "roles": {
         "learner": {
             "description": "A highly motivated human that is eager to learn.",
-            "agent_system_message": "A human admin.",
+            "agent_system_message": "A human admin. Reply TERMINATE when the task is done.",
             "human_input_mode": "NEVER",
             "autogen_code_execution_config": {}
         }
