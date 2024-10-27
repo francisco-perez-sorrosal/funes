@@ -106,7 +106,7 @@ class FunesSearch(BaseTool):
                 """Search the web for information about a particular query"""
                 logger.info("Modifying the query to search in google books")
                 query = query + " google books"
-                return DuckDuckGoSearchResults(verbose=True, response_format='content', num_results=5).run(query, verbose=True, return_json=True)
+                return DuckDuckGoSearchResults(verbose=True, response_format='content', num_results=10).run(query, verbose=True, return_json=True)
 
             results = ddg_search(query)
             logger.info(f"Search result ({type(results)}):\n{results}")
